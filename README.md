@@ -11,7 +11,7 @@ it for anything serious.
 
 ### Screenshot ###
 
-[![screenshot](http://fleetingfantasy.com/images/screenshots/001.jpg)]
+![screenshot](http://fleetingfantasy.com/images/screenshots/001.jpg)
 
 ### Features ###
 
