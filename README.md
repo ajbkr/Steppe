@@ -9,6 +9,10 @@ Steppe, like [Fleeting Fantasy](http://fleetingfantasy.com/), is actively under
 development so we recommend you wait until it's production-ready before using
 it for anything serious.
 
+### Screenshot ###
+
+[![screenshot](http://fleetingfantasy.com/images/screenshots/001.jpg)]
+
 ### Features ###
 
 * Four degrees of freedom (4DoF); translation along the x, y, and z axes and rotation about the y axis
