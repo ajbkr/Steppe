@@ -119,26 +119,26 @@ var Steppe = (function() {
         },
 
         Renderer: function(canvas, undefined) {
-            var _CANVAS_WIDTH        = 320;	// 320 pixels
-            var _ANGLE_OF_VIEW       = 60;	// 60 degrees
-            var _ONE_DEGREE_ANGLE    = 1 / _ANGLE_OF_VIEW * _CANVAS_WIDTH;
-            var _THIRTY_DEGREE_ANGLE = _ONE_DEGREE_ANGLE * 30;
-            var _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE = _ONE_DEGREE_ANGLE * 360;
-            var _ANGULAR_INCREMENT   = _ANGLE_OF_VIEW / _CANVAS_WIDTH;
-            var _DEGREES_TO_RADIANS  = Math.PI / 180;
-            var _FAKE_DEGREES_TO_RADIANS = (2 * Math.PI) /
-                ((360 / _ANGLE_OF_VIEW) * _CANVAS_WIDTH);
-            var _RADIANS_TO_DEGREES  = 180 / Math.PI;
-            var _RADIANS_TO_FAKE_DEGREES = ((360 / _ANGLE_OF_VIEW) *
-                _CANVAS_WIDTH) / (2 * Math.PI);
-            var _SCALE_FACTOR        = 35;
-            var _CAMERA_Y            = 175;
-            var _DISTANCE            = 75;
-            var _WATER_HEIGHT        = 64;
+            var _CANVAS_WIDTH        = 320,	// 320 pixels
+                _ANGLE_OF_VIEW       = 60,	// 60 degrees
+                _ONE_DEGREE_ANGLE    = 1 / _ANGLE_OF_VIEW * _CANVAS_WIDTH,
+                _THIRTY_DEGREE_ANGLE = _ONE_DEGREE_ANGLE * 30,
+                _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE = _ONE_DEGREE_ANGLE * 360,
+                _ANGULAR_INCREMENT   = _ANGLE_OF_VIEW / _CANVAS_WIDTH,
+                _DEGREES_TO_RADIANS  = Math.PI / 180,
+                _FAKE_DEGREES_TO_RADIANS = (2 * Math.PI) /
+                    ((360 / _ANGLE_OF_VIEW) * _CANVAS_WIDTH),
+                _RADIANS_TO_DEGREES  = 180 / Math.PI,
+                _RADIANS_TO_FAKE_DEGREES = ((360 / _ANGLE_OF_VIEW) *
+                    _CANVAS_WIDTH) / (2 * Math.PI),
+                _SCALE_FACTOR        = 35,
+                _CAMERA_Y            = 175,
+                _DISTANCE            = 75,
+                _WATER_HEIGHT        = 64;
 
-            var _FASTEST   = 4;
-            var _DONT_CARE = 2;
-            var _NICEST    = 1;
+            var _FASTEST   = 4,
+                _DONT_CARE = 2,
+                _NICEST    = 1;
 
             var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 };
             var _cosineLookupTable = [];
@@ -180,6 +180,9 @@ var Steppe = (function() {
 
             /**
              * ...
+             *
+             * @param {number} x ...
+             * @param {number} y ...
              */
             var _getPixelFromSky = function(x, y) {
                 var currentAngle;
@@ -485,6 +488,11 @@ var Steppe = (function() {
                     return this;
                 },
 
+                /**
+                 * ...
+                 *
+                 * @return {object} ...
+                 */
                 getCamera: function() {
                     return {
                         angle: _camera.angle /
@@ -496,6 +504,13 @@ var Steppe = (function() {
                     };
                 },
 
+                /**
+                 * ...
+                 *
+                 * @param {number} x ...
+                 * @param {number} z ...
+                 * @return {number} ...
+                 */
                 getHeight: function(x, z) {
                     var u;
                     var v;
@@ -550,11 +565,20 @@ var Steppe = (function() {
                     throw('Unknown capability');
                 },
 
+                /**
+                 * Render the terrain (landscape) including the sky.
+                 */
                 render: function() {
                     _renderSky();
                     _renderTerrain();
                 },
 
+                /**
+                 * ...
+                 *
+                 * @param {object} camera ...
+                 * @return {Renderer} This (fluent interface).
+                 */
                 setCamera: function(camera) {
                     if (typeof(camera) != 'object') {
                         throw('Invalid camera: not an object');
@@ -621,6 +645,15 @@ var Steppe = (function() {
                     return this;
                 },
 
+                /**
+                 * ...
+                 *
+                 * @param {HTMLImageElement} mask ...
+                 * @param {number} x ...
+                 * @param {number} y ...
+                 * @param {number} scaleFactor ...
+                 * @return {Renderer} This (fluent interface).
+                 */
                 setMask: function(mask, x, y, scaleFactor) {
                     var maskCanvas = document.createElement('canvas');
                     maskCanvas.width  = mask.width;
@@ -650,6 +683,11 @@ var Steppe = (function() {
                     return this;
                 },
 
+                /**
+                 * ...
+                 *
+                 * @param {HTMLCanvasElement} skyCanvas ...
+                 */
                 setSky: function(skyCanvas) {
                     if ( !(skyCanvas instanceof HTMLCanvasElement)) {
                         throw('Invalid skyCanvas: not an instance of ' +
@@ -668,6 +706,12 @@ var Steppe = (function() {
                     return this;
                 },
 
+                /**
+                 * ...
+                 *
+                 * @param {HTMLCanvasElement} texturemapCanvas ...
+                 * @return {Renderer} This (fluent interface).
+                 */
                 setTexturemap: function(texturemapCanvas) {
                     if ( !(texturemapCanvas instanceof HTMLCanvasElement)) {
                         throw('Invalid texturemapCanvas: not an instance of ' +
@@ -688,6 +732,14 @@ var Steppe = (function() {
                     return this;
                 },
 
+                /**
+                 * Set height of the reflection-mapped water.
+                 *
+                 * @param {number} height Globally-defined height of the
+                 *                        reflection-mapped water. It must be
+                 *                        in the range 0..255.
+                 * @return {Renderer} This (fluent interface).
+                 */
                 setWaterHeight: function(height) {
                     if (_waterHeight == -1) {
                         throw('Capability not enabled');
