@@ -1,8 +1,9 @@
 var Steppe = (function() {
     return {
         Compositor: function(undefined) {
-            var _heightmap = [];
-            var _textureArray = [];
+            var _heightmap = [],
+                _outOfBoundsHeightmap = [],
+                _textureArray = [];
 
             return {
                 /**
@@ -93,7 +94,66 @@ var Steppe = (function() {
                 },
 
                 /**
-                 * Set the heightmap to use for compositing.
+                 * Get the heightmap as an array.
+                 *
+                 * @return {array} ...
+                 */
+                getHeightmap: function() {
+                    return _heightmap;
+                },
+
+                /**
+                 * Get the out-of-bounds heightmap as an array.
+                 *
+                 * @return {array} ...
+                 */
+                getOutOfBoundsHeightmap: function() {
+                    return _outOfBoundsHeightmap;
+                },
+
+                /**
+                 * Put a mask (a 2.5D sprite's heightmap).
+                 *
+                 * @param {HTMLImageElement} mask The 2.5D sprite's heightmap;
+                 *                                should contain a greyscale
+                 *                                image.
+                 * @param {number} x The x-ordinate.
+                 * @param {number} y The y-ordinate.
+                 * @param {number} scaleFactor ...
+                 * @return {Renderer} This (fluent interface).
+                 */
+                putMask: function(mask, x, y, scaleFactor) {
+                    var maskCanvas = document.createElement('canvas');
+                    maskCanvas.width  = mask.width;
+                    maskCanvas.height = mask.height;
+
+                    var maskContext = maskCanvas.getContext('2d');
+
+                    maskContext.drawImage(mask, 0, 0);
+
+                    var data = maskContext.getImageData(0, 0, maskCanvas.width,
+                        maskCanvas.height).data;
+
+                    for (var y2 = 0; y2 < maskCanvas.height; ++y2) {
+                        for (var x2 = 0; x2 < maskCanvas.width; ++x2) {
+                            var index = y2 * maskCanvas.width + x2;
+
+                            if (data[index * 4 + 3]) {
+                                var index = ((y2 + y) << 10) + (x2 + x);
+
+                                _heightmap[index] = 192 +
+                                    data[(y2 * maskCanvas.width + x2) * 4] *
+                                    scaleFactor;
+                            }
+                        }
+                    }
+
+                    return this;
+                },
+
+                /**
+                 * Set the heightmap to use for compositing
+                 * [and out-of-bounds].
                  *
                  * @param {HTMLCanvasElement} heightmapCanvas The heightmap
                  *                                            canvas; should
@@ -110,6 +170,7 @@ var Steppe = (function() {
                             var index = (y << 10) + x;
 
                             _heightmap[index] = data[index << 2];
+                            _outOfBoundsHeightmap[index] = data[index << 2];
                         }
                     }
 
@@ -131,28 +192,31 @@ var Steppe = (function() {
                 _RADIANS_TO_DEGREES  = 180 / Math.PI,
                 _RADIANS_TO_FAKE_DEGREES = ((360 / _ANGLE_OF_VIEW) *
                     _CANVAS_WIDTH) / (2 * Math.PI),
-                _SCALE_FACTOR        = 35,
-                _CAMERA_Y            = 175,
-                _DISTANCE            = 75,
-                _WATER_HEIGHT        = 64;
+                _SCALE_FACTOR = 35,
+                _CAMERA_Y     = 175,
+                _DISTANCE     = 75,
+                _WATER_HEIGHT = 64;
 
             var _FASTEST   = 4,
                 _DONT_CARE = 2,
                 _NICEST    = 1;
 
-            var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 };
-            var _cosineLookupTable = [];
-            var _fog = false;
-            var _framebuffer = undefined;
-            var _heightmap = [];
-            var _inverseDistortionLookupTable = [];
-            var _quality = _DONT_CARE; // medium quality (default)
-            var _rayLengthLookupTable = [];
-            var _sineLookupTable = [];
-            var _sky;
-            var _smooth = 0;        // disabled (default)
-            var _texturemap;
-            var _waterHeight = -1;  // disabled (default)
+            var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 },
+                _cosineLookupTable = [],
+                _framebuffer = undefined,
+                _heightmap = [],
+                _inverseDistortionLookupTable = [],
+                _outOfBoundsHeightmap = [],
+                _outOfBoundsTexturemap,
+                _rayLengthLookupTable = [],
+                _sineLookupTable = [],
+                _sky,
+                _texturemap;
+
+            var _fog = false,		// disabled (default)
+                _quality = _DONT_CARE,	// medium quality (default)
+                _smooth = 0,		// disabled (default)
+                _waterHeight = -1;	// disabled (default)
 
             /**
              * Blend two colours together using an alpha value.
@@ -164,12 +228,12 @@ var Steppe = (function() {
              */
             var _alphaBlend = function(firstColor, secondColor, alpha)
             {
-                var normalisedAlpha = alpha / 255;
-                var adjustedAlpha = 1 - normalisedAlpha;
+                var normalisedAlpha = alpha / 255,
+                    adjustedAlpha = 1 - normalisedAlpha;
 
-                var mixedRed   = firstColor.red   * normalisedAlpha | 0;
-                var mixedGreen = firstColor.green * normalisedAlpha | 0;
-                var mixedBlue  = firstColor.blue  * normalisedAlpha | 0;
+                var mixedRed   = firstColor.red   * normalisedAlpha | 0,
+                    mixedGreen = firstColor.green * normalisedAlpha | 0,
+                    mixedBlue  = firstColor.blue  * normalisedAlpha | 0;
 
                 mixedRed   += Math.floor(secondColor.red   * adjustedAlpha);
                 mixedGreen += Math.floor(secondColor.green * adjustedAlpha);
@@ -179,16 +243,38 @@ var Steppe = (function() {
             };
 
             /**
+             * Get a pixel from the out-of-bounds texturemap.
+             *
+             * @param {number} x ...
+             * @param {number} y ...
+             * @return {object} ...
+             */
+            var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
+                if (_outOfBoundsTexturemap !== undefined) {
+                    var index = (y << 12) + (x << 2);
+
+                    return {
+                        red:   _outOfBoundsTexturemap[index],
+                        green: _outOfBoundsTexturemap[index + 1],
+                        blue:  _outOfBoundsTexturemap[index + 2]
+                    };
+                } else {
+                    return {
+                        red:   127,
+                        green: 127,
+                        blue:  127
+                    };
+                }
+            };
+
+            /**
              * ...
              *
              * @param {number} x ...
              * @param {number} y ...
              */
             var _getPixelFromSky = function(x, y) {
-                var currentAngle;
-                var data;
-
-                currentAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
+                var currentAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
 
                 if (currentAngle < 0) {
                     currentAngle += _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
@@ -200,7 +286,7 @@ var Steppe = (function() {
                     y = 100 - 1;
                 }
 
-                data = _sky.getContext('2d').getImageData(
+                var data = _sky.getContext('2d').getImageData(
                     (currentAngle + x | 0) % 1920, y, 1, 1).data;
 
                 return { red: data[0], green: data[1], blue: data[2] };
@@ -208,6 +294,10 @@ var Steppe = (function() {
 
             /**
              * ...
+             *
+             * @param {number} x ...
+             * @param {number} y ...
+             * @return {object} ...
              */
             var _getPixelFromTexturemap = function(x, y) {
                 var index = (y << 12) + (x << 2);
@@ -224,9 +314,7 @@ var Steppe = (function() {
              * fisheye).
              */
             var _initInverseDistortionLookupTable = function() {
-                var angleOfRotation;
-
-                for (angleOfRotation = 0;
+                for (var angleOfRotation = 0;
                     angleOfRotation < _THIRTY_DEGREE_ANGLE;
                     ++angleOfRotation) {
                     var angleOfRotationInRadians = angleOfRotation *
@@ -264,13 +352,10 @@ var Steppe = (function() {
              * Initialise the sine and cosine lookup tables.
              */
             var _initSineAndCosineLookupTables = function() {
-                var angleOfRotation;
-                var angleOfRotationInRadians;
-
-                for (angleOfRotation = 0;
+                for (var angleOfRotation = 0;
                     angleOfRotation < _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
                     ++angleOfRotation) {
-                    angleOfRotationInRadians = angleOfRotation *
+                    var angleOfRotationInRadians = angleOfRotation *
                         _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS;
 
                     _sineLookupTable[angleOfRotation]   = Math.sin(
@@ -342,7 +427,14 @@ var Steppe = (function() {
                         var u = rayX & 1023;
                         var v = rayZ & 1023;
 
-                        var height = _heightmap[(v << 10) + u];
+                        var height;
+                        if ((rayX < 1024 || rayX > 1024 + 1024 ||
+                            rayZ < 1024 || rayZ > 1024 + 1024) &&
+                            _outOfBoundsHeightmap.length > 0) {
+                            height = _outOfBoundsHeightmap[(v << 10) + u];
+                        } else {
+                            height = _heightmap[(v << 10) + u];
+                        }
 
                         var scale = height * _SCALE_FACTOR /
                             (rayLength + 1) | 0;
@@ -358,7 +450,20 @@ var Steppe = (function() {
 
                             if (rayX < 1024 || rayX > 1024 + 1024 ||
                                 rayZ < 1024 || rayZ > 1024 + 1024) {
-                                color = '#7f7f7f';
+                                var texel = _getPixelFromOutOfBoundsTexturemap(
+                                    u, v);
+
+                                if (_fog) {
+                                    var foggedTexel = _alphaBlend(texel,
+                                        { red: 127, green: 127, blue: 127 },
+                                        ~~(row / 150 * 255));
+
+                                    texel = foggedTexel;
+                                }
+
+                                color = 'rgb(' + texel.red +
+                                    ', ' + texel.green + ', ' +
+                                    texel.blue + ')';
                             } else {
                                 if (height < _waterHeight) {
                                     var data = _getPixelFromSky(ray,
@@ -489,7 +594,7 @@ var Steppe = (function() {
                 },
 
                 /**
-                 * ...
+                 * Get the current camera.
                  *
                  * @return {object} ...
                  */
@@ -512,11 +617,8 @@ var Steppe = (function() {
                  * @return {number} ...
                  */
                 getHeight: function(x, z) {
-                    var u;
-                    var v;
-
-                    u = x & 1023;
-                    v = z & 1023;
+                    var u = x & 1023;
+                    var v = z & 1023;
 
                     return _heightmap[(v << 10) + u];
                 },
@@ -574,7 +676,7 @@ var Steppe = (function() {
                 },
 
                 /**
-                 * ...
+                 * Set the current camera.
                  *
                  * @param {object} camera ...
                  * @return {Renderer} This (fluent interface).
@@ -618,29 +720,8 @@ var Steppe = (function() {
                  *                                            greyscale image.
                  * @return {Renderer} This (fluent interface).
                  */
-                setHeightmap: function(heightmapCanvas) {
-                    if ( !(heightmapCanvas instanceof HTMLCanvasElement)) {
-                        throw('Invalid heightmapCanvas: not an instance of' +
-                            'HTMLCanvasElement');
-                    }
-
-                    if (heightmapCanvas.width != 1024) {
-                        throw('heightmapCanvas width not equal to 1024');
-                    }
-                    if (heightmapCanvas.height != 1024) {
-                        throw('heightmapCanvas height not equal to 1024');
-                    }
-
-                    var data = heightmapCanvas.getContext('2d').getImageData(
-                        0, 0, 1024, 1024).data;
-
-                    for (var y = 0; y < 1024; ++y) {
-                        for (var x = 0; x < 1024; ++x) {
-                            var index = (y << 10) + x;
-
-                            _heightmap[index] = data[index << 2];
-                        }
-                    }
+                setHeightmap: function(heightmap) {
+                    _heightmap = heightmap;
 
                     return this;
                 },
@@ -648,37 +729,11 @@ var Steppe = (function() {
                 /**
                  * ...
                  *
-                 * @param {HTMLImageElement} mask ...
-                 * @param {number} x ...
-                 * @param {number} y ...
-                 * @param {number} scaleFactor ...
+                 * @param {array} outOfBoundsHeightmap ...
                  * @return {Renderer} This (fluent interface).
                  */
-                setMask: function(mask, x, y, scaleFactor) {
-                    var maskCanvas = document.createElement('canvas');
-                    maskCanvas.width  = mask.width;
-                    maskCanvas.height = mask.height;
-
-                    var maskContext = maskCanvas.getContext('2d');
-
-                    maskContext.drawImage(mask, 0, 0);
-
-                    var data = maskContext.getImageData(0, 0, maskCanvas.width,
-                        maskCanvas.height).data;
-
-                    for (var y2 = 0; y2 < maskCanvas.height; ++y2) {
-                        for (var x2 = 0; x2 < maskCanvas.width; ++x2) {
-                            var index = y2 * maskCanvas.width + x2;
-
-                            if (data[index * 4 + 3]) {
-                                var index = ((y2 + y) << 10) + (x2 + x);
-
-                                _heightmap[index] = 192 +
-                                    data[(y2 * maskCanvas.width + x2) * 4] *
-                                    scaleFactor;
-                            }
-                        }
-                    }
+                setOutOfBoundsHeightmap: function(outOfBoundsHeightmap) {
+                    _outOfBoundsHeightmap = outOfBoundsHeightmap;
 
                     return this;
                 },
@@ -686,7 +741,39 @@ var Steppe = (function() {
                 /**
                  * ...
                  *
-                 * @param {HTMLCanvasElement} skyCanvas ...
+                 * @param {HTMLCanvasElement} texturemapCanvas ...
+                 * @return {Renderer} This (fluent interface).
+                 */
+                setOutOfBoundsTexturemap: function(
+                    outOfBoundsTexturemapCanvas) {
+                    if ( !(outOfBoundsTexturemapCanvas instanceof
+                        HTMLCanvasElement)) {
+                        throw('Invalid outOfBoundsTexturemapCanvas: not an ' +
+                            'instance of HTMLCanvasElement');
+                    }
+
+                    if (outOfBoundsTexturemapCanvas.width != 1024) {
+                        throw('outOfBoundsTexturemapCanvas width not equal ' +
+                            'to 1024');
+                    }
+                    if (outOfBoundsTexturemapCanvas.height != 1024) {
+                        throw('outOfBoundsTexturemapCanvas height not equal ' +
+                            'to 1024');
+                    }
+
+                    _outOfBoundsTexturemap =
+                        outOfBoundsTexturemapCanvas.getContext('2d')
+                        .getImageData(0, 0, outOfBoundsTexturemapCanvas.width,
+                        outOfBoundsTexturemapCanvas.height).data;
+
+                    return this;
+                },
+
+                /**
+                 * Set the canvas to use for 360-degree panoramic sky.
+                 *
+                 * @param {HTMLCanvasElement} skyCanvas The sky canvas; must be
+                 *                                      1920x100.
                  */
                 setSky: function(skyCanvas) {
                     if ( !(skyCanvas instanceof HTMLCanvasElement)) {

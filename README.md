@@ -9,7 +9,9 @@ Steppe, like [Fleeting Fantasy](http://fleetingfantasy.com/), is actively under
 development so we recommend you wait until it's production-ready before using
 it for anything serious.
 
-### Screenshot ###
+### Screenshots ###
+
+![screenshot](http://fleetingfantasy.com/images/screenshots/005.jpg)
 
 ![screenshot](http://fleetingfantasy.com/images/screenshots/001.jpg)
 
@@ -23,7 +25,13 @@ it for anything serious.
 * Vertical antialiasing for smoother rendering results
 * Configurable render quality from low, through medium, to high
 * Rudimentary 2.5D sprites
+* Alternative texturemap for out-of-bounds terrain
 * All HTML5 2D canvas; no WebGL!
+
+### TODO ###
+
+* Pre-calculated lightmap support for shadows
+* Sanitised API
 
 ### Fleeting Fantasy/Steppe Demo ###
 
