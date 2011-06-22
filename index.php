@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en-gb">
   <head>
-    <script type="text/javascript" src="http://fleetingfantasy-com/js/jquery/jquery-1.5.min.js"></script> 
-    <script type="text/javascript" src="http://fleetingfantasy-com/js/jquery/plugins/jquery.loadImages.1.0.1.min.js"></script>
+    <script type="text/javascript" src="http://fleetingfantasy.com/js/jquery/jquery-1.5.min.js"></script> 
+    <script type="text/javascript" src="http://fleetingfantasy.com/js/jquery/plugins/jquery.loadImages.1.0.1.min.js"></script>
 <style type="text/css">
 body {
     font-family: Arial, sans;
