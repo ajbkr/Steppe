@@ -28,8 +28,9 @@ it for anything serious.
 * Alternative texturemap for out-of-bounds terrain
 * All HTML5 2D canvas; no WebGL!
 
-### TODO ###
+### Coming Soon ###
 
+* PHP port for graceful degradation where HTML5 canvas isn't supported
 * Pre-calculated lightmap support for shadows
 * Sanitised API
 

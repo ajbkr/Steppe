@@ -15,6 +15,11 @@ var Steppe = (function() {
                  * @return {Compositor} This (fluent interface).
                  */
                 addTexture: function(height, textureImage) {
+                    if ( !(textureImage instanceof HTMLImageElement)) {
+                        throw('Invalid textureImage: not an instance of ' +
+                            'HTMLImageElement');
+                    }
+
                     if (height < 0 || height > 255) {
                         throw('Invalid height; must be in the range 0..255');
                     }
@@ -55,7 +60,7 @@ var Steppe = (function() {
                  */
                 composite: function(texturemapCanvas) {
                     if ( !(texturemapCanvas instanceof HTMLCanvasElement)) {
-                        throw('Invalid texturemapCanvas: not an instance of' +
+                        throw('Invalid texturemapCanvas: not an instance of ' +
                             'HTMLCanvasElement');
                     }
 
@@ -120,7 +125,7 @@ var Steppe = (function() {
                  * @param {number} x The x-ordinate.
                  * @param {number} y The y-ordinate.
                  * @param {number} scaleFactor ...
-                 * @return {Renderer} This (fluent interface).
+                 * @return {Compositor} This (fluent interface).
                  */
                 putMask: function(mask, x, y, scaleFactor) {
                     var maskCanvas = document.createElement('canvas');
@@ -152,8 +157,8 @@ var Steppe = (function() {
                 },
 
                 /**
-                 * Set the heightmap to use for compositing
-                 * [and out-of-bounds].
+                 * Set the heightmap to use for compositing [and
+                 * out-of-bounds].
                  *
                  * @param {HTMLCanvasElement} heightmapCanvas The heightmap
                  *                                            canvas; should
@@ -162,15 +167,15 @@ var Steppe = (function() {
                  * @return {Compositor} This (fluent interface).
                  */
                 setHeightmap: function(heightmapCanvas) {
-                    var data = heightmapCanvas.getContext('2d').getImageData(
-                        0, 0, 1024, 1024).data;
+                    var data = heightmapCanvas.getContext('2d')
+                        .getImageData(0, 0, 1024, 1024).data;
 
                     for (var y = 0; y < 1024; ++y) {
                         for (var x = 0; x < 1024; ++x) {
                             var index = (y << 10) + x;
 
                             _heightmap[index] = data[index << 2];
-                            _outOfBoundsHeightmap[index] = data[index << 2];
+                            _outOfBoundsHeightmap[index] = _heightmap[index];
                         }
                     }
 
@@ -207,11 +212,11 @@ var Steppe = (function() {
                 _heightmap = [],
                 _inverseDistortionLookupTable = [],
                 _outOfBoundsHeightmap = [],
-                _outOfBoundsTexturemap,
+                _outOfBoundsTexturemap = undefined,
                 _rayLengthLookupTable = [],
                 _sineLookupTable = [],
-                _sky,
-                _texturemap;
+                _sky = undefined,
+                _texturemap = undefined;
 
             var _fog = false,		// disabled (default)
                 _quality = _DONT_CARE,	// medium quality (default)
@@ -221,13 +226,19 @@ var Steppe = (function() {
             /**
              * Blend two colours together using an alpha value.
              *
-             * @param {object} firstColor First (or source) colour
-             * @param {object} secondColor Second (or destination) colour
-             * @param {number} alpha Alpha value in the range 0..255
-             * @return {object} Mixed colour
+             * @param {object} firstColor First (or source) colour.
+             * @param {object} secondColor Second (or destination) colour.
+             * @param {number} alpha Alpha value in the range 0..255.
+             * @return {object} Mixed colour.
              */
             var _alphaBlend = function(firstColor, secondColor, alpha)
             {
+                if (alpha < 0) {
+                    alpha = 0;
+                } else if (alpha > 255) {
+                    alpha = 255;
+                }
+
                 var normalisedAlpha = alpha / 255,
                     adjustedAlpha = 1 - normalisedAlpha;
 
@@ -272,6 +283,7 @@ var Steppe = (function() {
              *
              * @param {number} x ...
              * @param {number} y ...
+             * @return {object} ...
              */
             var _getPixelFromSky = function(x, y) {
                 var currentAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
@@ -400,7 +412,7 @@ var Steppe = (function() {
              */
             var _renderTerrain = function() {
                 _framebuffer.fillStyle = '#7f7f7f';
-                _framebuffer.fillRect(0, 100, 320, 100);
+                _framebuffer.fillRect(0, 100, 320, 25);
 
                 var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
 
@@ -421,7 +433,7 @@ var Steppe = (function() {
 
                         var rayX = _camera.x + rayLength *
                             _cosineLookupTable[currentAngle] | 0;
-                        var rayZ = _camera.z - rayLength *
+                        var rayZ = _camera.z + rayLength *
                             _sineLookupTable[currentAngle] | 0;
 
                         var u = rayX & 1023;
@@ -480,7 +492,7 @@ var Steppe = (function() {
                                     if (_fog) {
                                         var foggedTexel = _alphaBlend(
                                             mixedColor,
-                                            { red: 128, green: 128, blue: 128 },
+                                            { red: 127, green: 127, blue: 127 },
                                             ~~(row / 100 * 255));
 
                                         texel = foggedTexel;
@@ -568,6 +580,7 @@ var Steppe = (function() {
                     } else {
                         throw("Can't disable unknown capability");
                     }
+
                     return this;
                 },
 
@@ -590,6 +603,7 @@ var Steppe = (function() {
                     } else {
                         throw("Can't enable unknown capability");
                     }
+
                     return this;
                 },
 
@@ -621,29 +635,6 @@ var Steppe = (function() {
                     var v = z & 1023;
 
                     return _heightmap[(v << 10) + u];
-                },
-
-                /**
-                 * Set render quality.
-                 *
-                 * @param {string} quality Specifies a string indicating the
-                 *                         render quality from 'low', through
-                 *                         'medium', to 'high'.
-                 * @return {Renderer} This (fluent interface).
-                 */
-                setQuality: function(quality) {
-                    if (quality === 'medium') {
-                        _quality = _DONT_CARE;
-                    } else if (quality === 'low') {
-                        _quality = _FASTEST;
-                    } else if (quality === 'high') {
-                        _quality = _NICEST;
-                    } else {
-                        throw("Invalid quality; must be 'low', 'medium', " +
-                            "or 'high'");
-                    }
-
-                    return this;
                 },
 
                 /**
@@ -701,9 +692,6 @@ var Steppe = (function() {
                         _initRayLengthLookupTable(_camera.y, _DISTANCE);
                     }
 
-                    _camera.y = (camera.y !== undefined &&
-                        typeof(camera.y) == 'number') ?
-                        (~~(camera.y + 0.5)) : (_camera.y);
                     _camera.z = (camera.z !== undefined &&
                         typeof(camera.z) == 'number') ?
                         (~~(camera.z + 0.5)) : (_camera.z);
@@ -714,10 +702,8 @@ var Steppe = (function() {
                 /**
                  * Set the heightmap to use for terrain rendering.
                  *
-                 * @param {HTMLCanvasElement} heightmapCanvas The heightmap
-                 *                                            canvas; should
-                 *                                            contain a
-                 *                                            greyscale image.
+                 * @param {array} heightmap The heightmap canvas as an array of
+                 *                          values in the range 0..255.
                  * @return {Renderer} This (fluent interface).
                  */
                 setHeightmap: function(heightmap) {
@@ -741,7 +727,7 @@ var Steppe = (function() {
                 /**
                  * ...
                  *
-                 * @param {HTMLCanvasElement} texturemapCanvas ...
+                 * @param {HTMLCanvasElement} outOfBoundsTexturemapCanvas ...
                  * @return {Renderer} This (fluent interface).
                  */
                 setOutOfBoundsTexturemap: function(
@@ -765,6 +751,29 @@ var Steppe = (function() {
                         outOfBoundsTexturemapCanvas.getContext('2d')
                         .getImageData(0, 0, outOfBoundsTexturemapCanvas.width,
                         outOfBoundsTexturemapCanvas.height).data;
+
+                    return this;
+                },
+
+                /**
+                 * Set render quality.
+                 *
+                 * @param {string} quality Specifies a string indicating the
+                 *                         render quality from 'low', through
+                 *                         'medium', to 'high'.
+                 * @return {Renderer} This (fluent interface).
+                 */
+                setQuality: function(quality) {
+                    if (quality === 'medium') {
+                        _quality = _DONT_CARE;
+                    } else if (quality === 'low') {
+                        _quality = _FASTEST;
+                    } else if (quality === 'high') {
+                        _quality = _NICEST;
+                    } else {
+                        throw("Invalid quality; must be 'low', 'medium', " +
+                            "or 'high'");
+                    }
 
                     return this;
                 },
