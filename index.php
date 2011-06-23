@@ -25,8 +25,10 @@ body {
 <!-- Uncomment the HTML below to test the compositor. -->
 <!--    <img src="composite.php" />-->
 <script type="text/javascript">
-document.writeln('<' + 'script src="Steppe.js?' + Number(new Date()) +
-    '" type="text/javascript">' + '<' + '/script>');
+document.writeln('<' + 'script src="js/Steppe/Compositor.js?' +
+    Number(new Date()) + '" type="text/javascript">' + '<' + '/script>');
+document.writeln('<' + 'script src="js/Steppe/Renderer.js?' +
+    Number(new Date()) + '" type="text/javascript">' + '<' + '/script>');
 </script>
 <script type="text/javascript">
 var Comparison = (function(undefined) {
