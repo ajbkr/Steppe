@@ -22,15 +22,15 @@ it for anything serious.
 * Full 360-degree panoramic sky
 * Distance fog for better depth perception
 * Texture-mapped terrain with client-side compositor accepting multiple textures
-* Vertical antialiasing for smoother rendering results
+* Antialiasing for smoother rendering results
 * Configurable render quality from low, through medium, to high
 * Rudimentary 2.5D sprites
 * Alternative texturemap for out-of-bounds terrain
+* PHP port for graceful degradation where HTML5 canvas isn't supported
 * All HTML5 2D canvas; no WebGL!
 
 ### Coming Soon ###
 
-* PHP port for graceful degradation where HTML5 canvas isn't supported
 * Pre-calculated lightmap support for shadows
 * Sanitised API
 
