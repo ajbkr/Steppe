@@ -20,8 +20,8 @@ body {
         Your Web browser does not support the canvas element.
       </p>
     </canvas>
-    <h3>PHP (GD)</h3>
-    <img style="height: 400px; width: 640px" src="render.php" />
+<!--    <h3>PHP (GD)</h3>
+    <img style="height: 400px; width: 640px" src="render.php" />-->
 <!-- Uncomment the HTML below to test the compositor. -->
 <!--    <img src="composite.php" />-->
 <script type="text/javascript">
@@ -56,16 +56,19 @@ var Comparison = (function(undefined) {
             var date = Number(new Date());
 
             $.loadImages([
-                '/images/sky.png' + '?' + date,
-                '/images/heightmap.png',
-                '/images/texturemap.png' + '?' + date
+                '/images/sky.png'        + '?' + date,
+                '/images/heightmap.png'  + '?' + date,
+                '/images/texturemap.png' + '?' + date,
+                '/images/sprite.png'     + '?' + date
             ], function() {
                 images[0] = new Image();
                 images[0].src = '/images/sky.png' + '?' + date;
                 images[1] = new Image();
-                images[1].src = '/images/heightmap.png';
+                images[1].src = '/images/heightmap.png' + '?' + date;
                 images[2] = new Image();
                 images[2].src = '/images/texturemap.png' + '?' + date;
+                images[3] = new Image();
+                images[3].src = '/images/sprite.png' + '?' + date;
 
                 var skyCanvas = document.createElement('canvas');
                 skyCanvas.width  = 1920;
@@ -93,17 +96,22 @@ var Comparison = (function(undefined) {
                 renderer.setTexturemap(texturemapCanvas)
                     .setOutOfBoundsTexturemap(heightmapCanvas)
                     .setQuality('high')
+//                    .setQuality('low')
                     .setSky(skyCanvas)
                     .setHeightmap(compositor.getHeightmap())
                     .setOutOfBoundsHeightmap(
                         compositor.getOutOfBoundsHeightmap())
+//                    .enable('smooth')
                     .enable('fog')
                     .enable('reflection-map')
                     .setWaterHeight(_WATER_HEIGHT)
                 ;
 
+                renderer.addSprite(images[3], 1024 + 512, 1024 + 512);
+
                 renderer.setCamera({
-                    angle: 240,
+//                    angle: 240,
+                    angle: 255,
                     x:     1024 + 768 - 128 - 96,
                     y:     165,
                     z:     1024 + 768 + 128
