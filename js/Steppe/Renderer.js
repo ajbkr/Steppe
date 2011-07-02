@@ -482,24 +482,33 @@ var Steppe = (function(Steppe) {
                     var width  = scale * sprite.image.width  | 0;
                     var height = scale * sprite.image.height | 0;
 
+                    // Calculate the cross product. The cross product differs
+                    // from the dot product in a crucial way: the result is
+                    // *signed*!
+//                    var crossProduct = spriteVectorX * cameraVectorZ -
+//                        cameraVectorX * spriteVectorZ;
+                    var crossProduct = cameraVectorX * spriteVectorZ -
+                        spriteVectorX * cameraVectorZ;
+
+                    console.log('crossProduct = ' + crossProduct);
+
                     // Calculate the projected x coord relative to the
-                    // horizonal centre of the canvas.
-                    var x = Math.round(theta * _RADIANS_TO_FAKE_DEGREES -
-                        width / 2);
-                    // Add or subtract the value of x from the horizontal
-                    // centre of the canvas.
-                    // NOTE: This will NOT work as the dot product is always
-                    // positive where the angle (theta) is acute, which it will
-                    // be cos' theta is less than or equal to 30 degrees!!!
-                    if (dotProduct < 0) {
-                        x = _CANVAS_WIDTH / 2 - x;
+                    // horizonal centre of the canvas. We add or subtract the
+                    // value dependent on the sign of the cross product.
+                    var x;
+                    if (crossProduct < 0) {
+                        x = _CANVAS_WIDTH / 2 -
+                            theta * _RADIANS_TO_FAKE_DEGREES | 0;
                     } else {
-                        x = _CANVAS_WIDTH / 2 + x;
+                        x = _CANVAS_WIDTH / 2 +
+                            theta * _RADIANS_TO_FAKE_DEGREES | 0;
                     }
+                    // Centre the scaled sprite.
+                    x -= width / 2;
 
                     // Add the projected sprite to the list of visible sprites.
                     // NOTE: Thus far, only the scaled width and height,
-                    // vectorLength and image are guaranteed to be correct.
+                    // vectorLength, x and image are guaranteed to be correct.
                     _visibleSpriteList.push({
                         height:       height,
                         image:        sprite.image,
