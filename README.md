@@ -11,7 +11,7 @@ it for anything serious.
 
 ### Screenshots ###
 
-![screenshot](http://fleetingfantasy.com/images/screenshots/005.jpg)
+![screenshot](http://fleetingfantasy.com/images/screenshots/007.jpg)
 
 ![screenshot](http://fleetingfantasy.com/images/screenshots/001.jpg)
 
@@ -24,15 +24,17 @@ it for anything serious.
 * Texture-mapped terrain with client-side compositor accepting multiple textures
 * Antialiasing for smoother rendering results
 * Configurable render quality from low, through medium, to high
-* Rudimentary 2.5D sprites
+* 2D billboarded sprites (JS only)
 * Alternative texturemap for out-of-bounds terrain
 * PHP port for graceful degradation where HTML5 canvas isn't supported
 * All HTML5 2D canvas; no WebGL!
 
 ### Coming Soon ###
 
-* Pre-calculated lightmap support for shadows
+* 2D billboarded sprites (PHP)
+* Fog applied to sprites
 * Sanitised API
+* Pre-calculated lightmap support for shadows
 
 ### Fleeting Fantasy/Steppe Demo ###
 

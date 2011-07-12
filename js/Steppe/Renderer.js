@@ -16,14 +16,7 @@ var Steppe = (function(Steppe) {
             _SCALE_FACTOR = 35,
             _CAMERA_Y     = 175,
             _DISTANCE     = 75,
-            _REAL_DISTANCE = Math.abs(1 / Math.tan(_ANGLE_OF_VIEW / 2) *
-                _CANVAS_WIDTH / 2),
-            _VERTICAL_FIELD_OF_VIEW = Math.round(2 * Math.atan(
-                (_CANVAS_HEIGHT / 2) / _DISTANCE) * _RADIANS_TO_DEGREES),
             _WATER_HEIGHT = 64;
-
-//        console.log('_REAL_DISTANCE = ' + _REAL_DISTANCE);
-//        console.log('_VERTICAL_FIELD_OF_VIEW = ' + _VERTICAL_FIELD_OF_VIEW);
 
         var _FASTEST   = 4,
             _DONT_CARE = 2,
@@ -46,7 +39,7 @@ var Steppe = (function(Steppe) {
         var _fog = false,		// disabled (default)
             _quality = _DONT_CARE,	// medium quality (default)
             _smooth = 0,		// disabled (default)
-            _waterHeight = -1;	// disabled (default)
+            _waterHeight = -1;		// disabled (default)
 
         /**
          * Blend two colours together using an alpha value.
@@ -147,6 +140,30 @@ var Steppe = (function(Steppe) {
         };
 
         /**
+         * ...
+         */
+        var _getRow = function(x, z, ray) {
+            var cameraVectorX = Math.cos(_camera.angle * _ANGULAR_INCREMENT *
+                _DEGREES_TO_RADIANS);
+            var cameraVectorZ = Math.sin(_camera.angle * _ANGULAR_INCREMENT *
+                _DEGREES_TO_RADIANS);
+
+            var spriteVectorX = x - _camera.x;
+            var spriteVectorZ = z - _camera.z;
+
+            var vectorLength = Math.sqrt(spriteVectorX * spriteVectorX +
+                spriteVectorZ * spriteVectorZ);
+
+            var newVectorLength = vectorLength /
+                _inverseDistortionLookupTable[ray];
+
+            var y = Math.round(_DISTANCE * _camera.y / newVectorLength);
+            var row = y + _CANVAS_HEIGHT - 1 - _camera.y;
+
+            return row;
+        };
+
+        /**
          * Initialise the inverse distortion lookup table (for removing
          * fisheye).
          */
@@ -160,10 +177,16 @@ var Steppe = (function(Steppe) {
                 _inverseDistortionLookupTable[angleOfRotation +
                     _THIRTY_DEGREE_ANGLE] = 1 /
                     Math.cos(angleOfRotationInRadians);
-                _inverseDistortionLookupTable[
-                    _THIRTY_DEGREE_ANGLE - angleOfRotation] = 1 /
-                    Math.cos(angleOfRotationInRadians);
+
+                var cosine = Math.cos(angleOfRotationInRadians);
+                if (cosine != 0) {
+                    _inverseDistortionLookupTable[
+                        _THIRTY_DEGREE_ANGLE - angleOfRotation] = 1 / cosine;
+                }
             }
+
+            _inverseDistortionLookupTable[0]   = 2;
+            _inverseDistortionLookupTable[160] = 1;
         };
 
         /**
@@ -173,14 +196,16 @@ var Steppe = (function(Steppe) {
          * @param {number} distance ...
          */
         var _initRayLengthLookupTable = function(y, distance) {
-            for (var ray = 1; ray < 320; ++ray) {
-                for (var row = 50; row < 200 + 100; ++row) {
-                    var invertedRow = 200 - row;
+            for (var ray = 1; ray < _CANVAS_WIDTH; ++ray) {
+                for (var row = 0; row < _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2;
+                    ++row) {
+                    var invertedRow = _CANVAS_HEIGHT - 1 - row;
 
                     var rayLength = _inverseDistortionLookupTable[ray] *
                         ((distance * y) / (y - invertedRow));
 
-                    _rayLengthLookupTable[row * 320 + ray] = rayLength;
+                    _rayLengthLookupTable[row * _CANVAS_WIDTH + ray] =
+                        rayLength;
                 }
             }
         };
@@ -249,10 +274,11 @@ var Steppe = (function(Steppe) {
 
             var currentAngle = initialAngle;
 
-            for (var ray = _quality; ray < 320; ray += _quality) {
-                var previousTop = 200 + 100 - 1;
+            for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
+                var previousTop = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
 
-                for (var row = 200 + 100 - 1; row >= 50; --row) {
+                for (var row = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
+                    row >= 0; --row) {
                     var rayLength = _rayLengthLookupTable[
                         (row << 8) + (row << 6) + ray];
 
@@ -273,10 +299,9 @@ var Steppe = (function(Steppe) {
                         height = _heightmap[(v << 10) + u];
                     }
 
-                    var scale = height * _SCALE_FACTOR /
-                        (rayLength + 1) | 0;
+                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top = 50 + row - scale,
+                    var top = _CANVAS_HEIGHT / 2 + row - scale,
                         bottom = top + scale;
 
                     if (top < previousTop) {
@@ -293,7 +318,7 @@ var Steppe = (function(Steppe) {
                             if (_fog) {
                                 var foggedTexel = _alphaBlend(texel,
                                     { red: 127, green: 127, blue: 127 },
-                                    ~~(row / 150 * 255));
+                                    ~~(row / 100 * 255));
 
                                 texel = foggedTexel;
                             }
@@ -334,7 +359,7 @@ var Steppe = (function(Steppe) {
                                 if (_fog) {
                                     var foggedTexel = _alphaBlend(texel,
                                         { red: 127, green: 127, blue: 127 },
-                                        ~~(row / 150 * 255));
+                                        ~~(row / 100 * 255));
 
                                     texel = foggedTexel;
                                 }
@@ -387,9 +412,8 @@ var Steppe = (function(Steppe) {
              *    sprite and the x coord is the centre of the width of the
              *    sprite.
              * 3. After drawing each row of terrain, draw any sprites where the
-             *    sprite's y coord equals the current row (THIS NEEDS
-             *    REVISING). Remove the sprite from the list of visible
-             *    sprites.
+             *    sprite's 'projected' row equals the current row. Remove the
+             *    sprite from the list of visible sprites.
              * 4. Rinse and repeat.
              */
 
@@ -406,16 +430,6 @@ var Steppe = (function(Steppe) {
             var cameraVectorZ = Math.sin(_camera.angle * _ANGULAR_INCREMENT *
                 _DEGREES_TO_RADIANS);
 
-            // Calculate the magnitude of the camera's unit vector; being a
-            // unit vector, the magnitude should equal 1.
-            var cameraMagnitude = Math.sqrt(
-                cameraVectorX * cameraVectorX +
-                cameraVectorZ * cameraVectorZ);
-
-            console.log('cameraVectorX = ' + cameraVectorX);
-            console.log('cameraVectorZ = ' + cameraVectorZ);
-            console.log('cameraMagnitude = ' + cameraMagnitude);
-
             // For each sprite...
             for (var i = 0; i < _spriteList.length; ++i) {
                 var sprite = _spriteList[i];
@@ -430,28 +444,13 @@ var Steppe = (function(Steppe) {
                     spriteVectorX * spriteVectorX +
                     spriteVectorZ * spriteVectorZ);
 
-                console.log('vectorLength (distance from the camera to the ' +
-                    'sprite) = ' + vectorLength);
-
                 // Normalise the sprite vector to become the unit vector.
                 spriteVectorX /= vectorLength;
                 spriteVectorZ /= vectorLength;
 
-                // Calculate the magnitude of the sprite's unit vector; being a
-                // unit vector, the magnitude should equal 1.
-                var spriteMagnitude = Math.sqrt(
-                    spriteVectorX * spriteVectorX +
-                    spriteVectorZ * spriteVectorZ);
-
-                console.log('spriteVectorX = ' + spriteVectorX);
-                console.log('spriteVectorZ = ' + spriteVectorZ);
-                console.log('spriteMagnitude = ' + spriteMagnitude);
-
                 // Calculate the dot product of the camera and sprite vectors.
                 var dotProduct = cameraVectorX * spriteVectorX +
                     cameraVectorZ * spriteVectorZ;
-
-                console.log('dotProduct = ' + dotProduct);
 
                 // If the dot product is negative...
                 if (dotProduct < 0) {
@@ -462,35 +461,23 @@ var Steppe = (function(Steppe) {
 
                 // Calculate the angle (theta) between the camera vector and
                 // the sprite vector.
-                var theta = Math.acos(dotProduct /
-                    (cameraMagnitude * spriteMagnitude));
-
-                console.log('theta = ' + theta);
-
-                // Convert theta from radians to degrees (for debugging
-                // purposes only).
-                var thetaInDegrees = Math.round(theta * _RADIANS_TO_DEGREES);
-
-                console.log('thetaInDegrees = ' + thetaInDegrees);
+                var theta = Math.acos(dotProduct);
 
                 // If the angle (theta) is less than or equal to 30 degrees...
                 // NOTE: We do NOT need to check the lower bound (-30 degrees)
                 // because theta will /never/ be negative.
                 if (theta <= _THIRTY_DEGREE_ANGLE * _FAKE_DEGREES_TO_RADIANS) {
-                    var scale = 1 / (vectorLength + 1) * _SCALE_FACTOR;
+                    var scale = _SCALE_FACTOR / (vectorLength + 1);
 
+                    // Scale the projected sprite.
                     var width  = scale * sprite.image.width  | 0;
                     var height = scale * sprite.image.height | 0;
 
                     // Calculate the cross product. The cross product differs
                     // from the dot product in a crucial way: the result is
                     // *signed*!
-//                    var crossProduct = spriteVectorX * cameraVectorZ -
-//                        cameraVectorX * spriteVectorZ;
                     var crossProduct = cameraVectorX * spriteVectorZ -
                         spriteVectorX * cameraVectorZ;
-
-                    console.log('crossProduct = ' + crossProduct);
 
                     // Calculate the projected x coord relative to the
                     // horizonal centre of the canvas. We add or subtract the
@@ -503,8 +490,41 @@ var Steppe = (function(Steppe) {
                         x = _CANVAS_WIDTH / 2 +
                             theta * _RADIANS_TO_FAKE_DEGREES | 0;
                     }
+
+                    // Calculate the 3D coords of the sprite.
+                    var spriteX = sprite.x;
+                    var spriteY = _heightmap[((sprite.z & 1023) << 10) +
+                        (sprite.x & 1023)];
+                    var spriteZ = sprite.z;
+
+                    console.log('spriteX = ' + spriteX);
+                    console.log('spriteY = ' + spriteY);
+                    console.log('spriteZ = ' + spriteZ);
+
+                    var row = _getRow(spriteX, spriteZ, x);
+
                     // Centre the scaled sprite.
                     x -= width / 2;
+
+                    var rayX = spriteX;
+                    var rayZ = spriteZ;
+
+                    var u = rayX & 1023;
+                    var v = rayZ & 1023;
+
+                    var projectedHeight;
+                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
+                        rayZ < 1024 || rayZ > 1024 + 1024) &&
+                        _outOfBoundsHeightmap.length > 0) {
+                        projectedHeight = _outOfBoundsHeightmap[(v << 10) + u];
+                    } else {
+                        projectedHeight = _heightmap[(v << 10) + u];
+                    }
+
+                    var projectedScale = projectedHeight * scale;
+
+                    var top = _CANVAS_HEIGHT / 2 + row - projectedScale,
+                        bottom = top + projectedScale;
 
                     // Add the projected sprite to the list of visible sprites.
                     // NOTE: Thus far, only the scaled width and height,
@@ -512,14 +532,11 @@ var Steppe = (function(Steppe) {
                     _visibleSpriteList.push({
                         height:       height,
                         image:        sprite.image,
-                        row:          50 + sprite.y * (_DISTANCE / (spriteVectorZ * vectorLength)) | 0,
+                        row:          bottom | 0,
                         vectorLength: vectorLength,
                         width:        width,
-                        x:            x,
-//                        y:            sprite.y * (_DISTANCE / (sprite.z - _camera.z)) - (scale * sprite.y + height) | 0
-//                        y:            scale * sprite.y + height | 0
-//                        y:            scale * (sprite.y + sprite.image.height) | 0
-                        y:            (_CANVAS_WIDTH - width) / 2 | 0
+                        x:            x | 0,
+                        y:            top - height | 0
                     });
                 }
             }
@@ -534,9 +551,11 @@ var Steppe = (function(Steppe) {
 
             var currentAngle = initialAngle;
 
-            for (var row = 50; row < 200 + 100 - 1; ++row) {
+            var maximumRow = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
 
-                for (var ray = _quality; ray < 320; ray += _quality) {
+            for (var row = 0; row <= maximumRow; ++row) {
+
+                for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
                     var rayLength = _rayLengthLookupTable[
                         (row << 8) + (row << 6) + ray];
 
@@ -557,10 +576,9 @@ var Steppe = (function(Steppe) {
                         height = _heightmap[(v << 10) + u];
                     }
 
-                    var scale = height * _SCALE_FACTOR /
-                        (rayLength + 1) | 0;
+                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top = 50 + row - scale,
+                    var top = _CANVAS_HEIGHT / 2 + row - scale,
                         bottom = top + scale;
 
                     var color = '';
@@ -573,7 +591,7 @@ var Steppe = (function(Steppe) {
                         if (_fog) {
                             var foggedTexel = _alphaBlend(texel,
                                 { red: 127, green: 127, blue: 127 },
-                                ~~(row / 150 * 255));
+                                ~~(row / 100 * 255));
 
                             texel = foggedTexel;
                         }
@@ -614,7 +632,7 @@ var Steppe = (function(Steppe) {
                             if (_fog) {
                                 var foggedTexel = _alphaBlend(texel,
                                     { red: 127, green: 127, blue: 127 },
-                                    ~~(row / 150 * 255));
+                                    ~~(row / 100 * 255));
 
                                 texel = foggedTexel;
                             }
@@ -649,36 +667,32 @@ var Steppe = (function(Steppe) {
                     }
                 }
 
+                // For each 'visible' sprite...
                 for (var i = 0; i < _visibleSpriteList.length; ++i) {
+                    // If the current sprite has been removed...
                     if (_visibleSpriteList[i] === undefined) {
+                        // Move to the next sprite.
                         continue;
                     }
 
                     var sprite = _visibleSpriteList[i];
 
+                    // If the current row matches the base of the sprite...
                     if (row == sprite.row) {
-                        console.log('height = ' + sprite.height);
-                        console.log('row = ' + sprite.row);
-                        console.log('vectorLength = ' + sprite.vectorLength);
-                        console.log('width = ' + sprite.width);
-                        console.log('x = ' + sprite.x);
-                        console.log('y = ' + sprite.y);
-
-//                        var newY = row + sprite.height - sprite.y;
-                        var newY = sprite.y;
-
-                        console.log('newY = ' + newY);
-
+                        // Draw the sprite.
                         _framebuffer.drawImage(
                             sprite.image,
                             sprite.x,
-                            newY,
+                            sprite.y - _smooth,
                             sprite.width,
                             sprite.height);
+
+                        // Remove the sprite from the list of visible sprites.
                         _visibleSpriteList[i] = undefined;
                     }
                 }
 
+                // Reset the current angle to -30 degrees of centre.
                 currentAngle = initialAngle;
             }
         };
