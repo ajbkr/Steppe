@@ -1,3 +1,9 @@
+/**
+ * Compositor object.
+ *
+ * @author Andrew J. Baker
+ */
+
 var Steppe = (function(Steppe) {
     Steppe.Compositor = function(undefined) {
         var _heightmap = [],
@@ -100,7 +106,7 @@ var Steppe = (function(Steppe) {
             /**
              * Get the heightmap as an array.
              *
-             * @return {array} ...
+             * @return {array} The heightmap canvas converted to an array.
              */
             getHeightmap: function() {
                 return _heightmap;
@@ -109,7 +115,8 @@ var Steppe = (function(Steppe) {
             /**
              * Get the out-of-bounds heightmap as an array.
              *
-             * @return {array} ...
+             * @return {array} The out-of-bounds heightmap canvas converted to
+             *                 an array.
              */
             getOutOfBoundsHeightmap: function() {
                 return _outOfBoundsHeightmap;
@@ -123,7 +130,8 @@ var Steppe = (function(Steppe) {
              *                                image.
              * @param {number} x The x-ordinate.
              * @param {number} y The y-ordinate.
-             * @param {number} scaleFactor ...
+             * @param {number} scaleFactor The scale factor to multiply each
+             *                             value in the mask by.
              * @return {Compositor} This (fluent interface).
              */
             putMask: function(mask, x, y, scaleFactor) {

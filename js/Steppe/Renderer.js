@@ -1,3 +1,9 @@
+/**
+ * Renderer object.
+ *
+ * @author Andrew J. Baker
+ */
+
 var Steppe = (function(Steppe) {
     Steppe.Renderer = function(canvas, undefined) {
         var _CANVAS_WIDTH        = 320,	// 320 pixels
@@ -49,8 +55,7 @@ var Steppe = (function(Steppe) {
          * @param {number} alpha Alpha value in the range 0..255.
          * @return {object} Mixed colour.
          */
-        var _alphaBlend = function(firstColor, secondColor, alpha)
-        {
+        var _alphaBlend = function(firstColor, secondColor, alpha) {
             if (alpha < 0) {
                 alpha = 0;
             } else if (alpha > 255) {
@@ -74,9 +79,12 @@ var Steppe = (function(Steppe) {
         /**
          * Get a pixel from the out-of-bounds texturemap.
          *
-         * @param {number} x ...
-         * @param {number} y ...
-         * @return {object} ...
+         * @param {number} x The x-coordinate; must be in the range
+         *                   0..out-of-bounds-texturemap-width - 1.
+         * @param {number} y The y-coordinate; must be in the range
+         *                   0..out-of-bounds-texturemap-height - 1.
+         * @return {object} An object composed of RGB components for the
+         *                  corresponding pixel.
          */
         var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
             if (_outOfBoundsTexturemap !== undefined) {
@@ -97,11 +105,14 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * ...
+         * Get a pixel from the sky canvas.
          *
-         * @param {number} x ...
-         * @param {number} y ...
-         * @return {object} ...
+         * @param {number} x The x-coordinate; should be in the range
+         *                   0..sky-width - 1.
+         * @param {number} y The y-coordinate; should be in the range
+         *                   0..sky-height - 1.
+         * @return {object} An object composed of RGB components for the
+         *                  corresponding pixel.
          */
         var _getPixelFromSky = function(x, y) {
             var currentAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
@@ -123,11 +134,14 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * ...
+         * Get a pixel from the texturemap.
          *
-         * @param {number} x ...
-         * @param {number} y ...
-         * @return {object} ...
+         * @param {number} x The x-coordinate; must be in the range
+         *                   0..texturemap-width - 1.
+         * @param {number} y The y-coordinate; must be in the range
+         *                   0..texturemap-width - 1.
+         * @return {object} An object composed of RGB components for the
+         *                  corresponding pixel.
          */
         var _getPixelFromTexturemap = function(x, y) {
             var index = (y << 12) + (x << 2);
@@ -140,7 +154,13 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * ...
+         * Get the row at which a sprite should be rendered. This is a private
+         * helper method.
+         *
+         * @param {number} x ...
+         * @param {number} z ...
+         * @param {number} ray ...
+         * @return {number} ...
          */
         var _getRow = function(x, z, ray) {
             var cameraVectorX = Math.cos(_camera.angle * _ANGULAR_INCREMENT *
@@ -192,8 +212,9 @@ var Steppe = (function(Steppe) {
         /**
          * Initialise (or recalculate) the ray-length lookup table.
          *
-         * @param {number} y ...
-         * @param {number} distance ...
+         * @param {number} y The position of the camera on the y-axis.
+         * @param {number} distance The distance from the camera to the
+         *                          projection plane.
          */
         var _initRayLengthLookupTable = function(y, distance) {
             for (var ray = 1; ray < _CANVAS_WIDTH; ++ray) {
@@ -238,19 +259,29 @@ var Steppe = (function(Steppe) {
                 angleOfRotation += _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
             }
 
-            angleOfRotation |= 0;
+            angleOfRotation |= 0; 
 
             var skyWidth  = _sky.width;
-            var skyHeight = _sky.height;
+            var skyHeight = _CANVAS_HEIGHT / 2 - (_camera.y - _CANVAS_HEIGHT);
+
+            if (skyHeight > _sky.height) {
+                skyHeight = _sky.height;
+            }
+
+            var sy = _camera.y - _CANVAS_HEIGHT;
+
+            if (sy < 0) {
+                sy = 0;
+            }
 
             if (angleOfRotation + 320 <= skyWidth) {
-                _framebuffer.drawImage(_sky, angleOfRotation, 0, 320,
+                _framebuffer.drawImage(_sky, angleOfRotation, sy, 320,
                     skyHeight, 0, 0, 320, skyHeight);
             } else {
-                _framebuffer.drawImage(_sky, angleOfRotation, 0,
+                _framebuffer.drawImage(_sky, angleOfRotation, sy,
                     skyWidth - angleOfRotation, skyHeight, 0, 0,
                     skyWidth - angleOfRotation, skyHeight);
-                _framebuffer.drawImage(_sky, 0, 0,
+                _framebuffer.drawImage(_sky, 0, sy,
                     320 - (skyWidth - angleOfRotation),
                     skyHeight, skyWidth - angleOfRotation, 0,
                     320 - (skyWidth - angleOfRotation), skyHeight);
@@ -497,10 +528,6 @@ var Steppe = (function(Steppe) {
                         (sprite.x & 1023)];
                     var spriteZ = sprite.z;
 
-                    console.log('spriteX = ' + spriteX);
-                    console.log('spriteY = ' + spriteY);
-                    console.log('spriteZ = ' + spriteZ);
-
                     var row = _getRow(spriteX, spriteZ, x);
 
                     // Centre the scaled sprite.
@@ -523,7 +550,9 @@ var Steppe = (function(Steppe) {
 
                     var projectedScale = projectedHeight * scale;
 
-                    var top = _CANVAS_HEIGHT / 2 + row - projectedScale,
+                    var top = _CANVAS_HEIGHT / 2 -
+                        (_camera.y - _CANVAS_HEIGHT) + row -
+                        projectedScale,
                         bottom = top + projectedScale;
 
                     // Add the projected sprite to the list of visible sprites.
@@ -578,7 +607,8 @@ var Steppe = (function(Steppe) {
 
                     var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top = _CANVAS_HEIGHT / 2 + row - scale,
+                    var top = _CANVAS_HEIGHT / 2 -
+                        (_camera.y - _CANVAS_HEIGHT) + row - scale,
                         bottom = top + scale;
 
                     var color = '';
@@ -697,6 +727,10 @@ var Steppe = (function(Steppe) {
             }
         };
 
+        if (arguments.length > 1) {
+            throw('Too many arguments passed to constructor');
+        }
+
         if (canvas.width !== _CANVAS_WIDTH) {
             throw('Canvas width not equal to ' + _CANVAS_WIDTH);
         }
@@ -712,11 +746,12 @@ var Steppe = (function(Steppe) {
 
         return {
             /**
-             * ...
+             * Add a 2D sprite, at the specified world coords, to the sprite
+             * list.
              *
-             * @param {Image} image ...
-             * @param {number} x ...
-             * @param {number} z ...
+             * @param {Image} image The 2D sprite as an image.
+             * @param {number} x The x-coordinate in world space.
+             * @param {number} z The z-coordinate in world space.
              * @return {Renderer} This (fluent interface).
              */
             addSprite: function(image, x, z) {
@@ -729,6 +764,8 @@ var Steppe = (function(Steppe) {
                     y: _heightmap[(v << 10) + u],
                     z: z
                 });
+
+                return this;
             },
 
             /**
@@ -780,7 +817,9 @@ var Steppe = (function(Steppe) {
             /**
              * Get the current camera.
              *
-             * @return {object} ...
+             * @return {object} An object composed of an angle-of-rotation (in
+             *                  'fake' degrees) about the y-axis and a 3D point
+             *                  in world space.
              */
             getCamera: function() {
                 return {
@@ -794,11 +833,13 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * ...
+             * Get the height (from the heightmap) of a single unit of terrain,
+             * in world space.
              *
-             * @param {number} x ...
-             * @param {number} z ...
-             * @return {number} ...
+             * @param {number} x The x-coordinate of the unit of terrain.
+             * @param {number} z The z-coordinate of the unit of terrain.
+             * @return {number} The corresponding y-coordinate of the specified
+             *                  unit of terrain.
              */
             getHeight: function(x, z) {
                 var u = x & 1023;
@@ -843,7 +884,8 @@ var Steppe = (function(Steppe) {
             /**
              * Set the current camera.
              *
-             * @param {object} camera ...
+             * @param {object} camera The object representing the current
+             *                        camera.
              * @return {Renderer} This (fluent interface).
              */
             setCamera: function(camera) {
@@ -887,9 +929,10 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * ...
+             * Set the out-of-bounds heightmap.
              *
-             * @param {array} outOfBoundsHeightmap ...
+             * @param {array} outOfBoundsHeightmap The out-of-bounds heightmap
+             *                                     canvas as an array.
              * @return {Renderer} This (fluent interface).
              */
             setOutOfBoundsHeightmap: function(outOfBoundsHeightmap) {
@@ -899,9 +942,10 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * ...
+             * Set the out-of-bounds texturemap.
              *
-             * @param {HTMLCanvasElement} outOfBoundsTexturemapCanvas ...
+             * @param {HTMLCanvasElement} outOfBoundsTexturemapCanvas The
+             *                            out-of-bounds texturemap canvas.
              * @return {Renderer} This (fluent interface).
              */
             setOutOfBoundsTexturemap: function(
@@ -977,9 +1021,10 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * ...
+             * Set the texturemap.
              *
-             * @param {HTMLCanvasElement} texturemapCanvas ...
+             * @param {HTMLCanvasElement} texturemapCanvas The texturemap
+             *                                             canvas.
              * @return {Renderer} This (fluent interface).
              */
             setTexturemap: function(texturemapCanvas) {
