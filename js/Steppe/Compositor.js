@@ -4,7 +4,9 @@
  * @author Andrew J. Baker
  */
 
+/** @namespace Steppe */
 var Steppe = (function(Steppe) {
+    /** @class */
     Steppe.Compositor = function(undefined) {
         var _heightmap = [],
             _outOfBoundsHeightmap = [],

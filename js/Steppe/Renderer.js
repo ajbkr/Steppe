@@ -4,7 +4,9 @@
  * @author Andrew J. Baker
  */
 
+/** @namespace Steppe */
 var Steppe = (function(Steppe) {
+    /** @class */
     Steppe.Renderer = function(canvas, undefined) {
         var _CANVAS_WIDTH        = 320,	// 320 pixels
             _CANVAS_HEIGHT       = 200,	// 200 pixels
