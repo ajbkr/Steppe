@@ -52,10 +52,10 @@ var Steppe = (function(Steppe) {
         /**
          * Blend two colours together using an alpha value.
          *
-         * @param {object} firstColor First (or source) colour.
-         * @param {object} secondColor Second (or destination) colour.
+         * @param {number} firstColor First, or source, colour (RGBA).
+         * @param {number} secondColor Second, or destination, colour (RGBA).
          * @param {number} alpha Alpha value in the range 0..255.
-         * @return {object} Mixed colour.
+         * @return {number} Mixed colour (RGBA).
          */
         var _alphaBlend = function(firstColor, secondColor, alpha) {
             if (alpha < 0) {
@@ -65,17 +65,22 @@ var Steppe = (function(Steppe) {
             }
 
             var normalisedAlpha = alpha / 255,
-                adjustedAlpha = 1 - normalisedAlpha;
+                adjustedAlpha   = 1 - normalisedAlpha;
 
-            var mixedRed   = firstColor.red   * normalisedAlpha | 0,
-                mixedGreen = firstColor.green * normalisedAlpha | 0,
-                mixedBlue  = firstColor.blue  * normalisedAlpha | 0;
+            var mixedRed   = ((firstColor >> 24) & 0xff) * normalisedAlpha | 0,
+                mixedGreen = ((firstColor >> 16) & 0xff) * normalisedAlpha | 0,
+                mixedBlue  = ((firstColor >> 8)  & 0xff) * normalisedAlpha | 0;
 
-            mixedRed   += Math.floor(secondColor.red   * adjustedAlpha);
-            mixedGreen += Math.floor(secondColor.green * adjustedAlpha);
-            mixedBlue  += Math.floor(secondColor.blue  * adjustedAlpha);
+            mixedRed   += Math.floor(((secondColor >> 24) & 0xff) *
+                adjustedAlpha);
+            mixedGreen += Math.floor(((secondColor >> 16) & 0xff) *
+                adjustedAlpha);
+            mixedBlue  += Math.floor(((secondColor >> 8)  & 0xff) *
+                adjustedAlpha);
 
-            return { red: mixedRed, green: mixedGreen, blue: mixedBlue };
+            return (mixedRed << 24) |
+                (mixedGreen << 16)  |
+                (mixedBlue  << 8)   | 0xff;
         };
 
         /**
@@ -85,24 +90,18 @@ var Steppe = (function(Steppe) {
          *                   0..out-of-bounds-texturemap-width - 1.
          * @param {number} y The y-coordinate; must be in the range
          *                   0..out-of-bounds-texturemap-height - 1.
-         * @return {object} An object composed of RGB components for the
+         * @return {number} An integer composed of RGBA components for the
          *                  corresponding pixel.
          */
         var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
             if (_outOfBoundsTexturemap !== undefined) {
                 var index = (y << 12) + (x << 2);
 
-                return {
-                    red:   _outOfBoundsTexturemap[index],
-                    green: _outOfBoundsTexturemap[index + 1],
-                    blue:  _outOfBoundsTexturemap[index + 2]
-                };
+                return (_outOfBoundsTexturemap[index] << 24) |
+                    (_outOfBoundsTexturemap[index + 1] << 16) |
+                    (_outOfBoundsTexturemap[index + 2] << 8) | 0xff;
             } else {
-                return {
-                    red:   127,
-                    green: 127,
-                    blue:  127
-                };
+                return 0x7f7f7fff;
             }
         };
 
@@ -113,7 +112,7 @@ var Steppe = (function(Steppe) {
          *                   0..sky-width - 1.
          * @param {number} y The y-coordinate; should be in the range
          *                   0..sky-height - 1.
-         * @return {object} An object composed of RGB components for the
+         * @return {number} An integer composed of RGBA components for the
          *                  corresponding pixel.
          */
         var _getPixelFromSky = function(x, y) {
@@ -132,7 +131,9 @@ var Steppe = (function(Steppe) {
             var data = _sky.getContext('2d').getImageData(
                 (currentAngle + x | 0) % 1920, y, 1, 1).data;
 
-            return { red: data[0], green: data[1], blue: data[2] };
+            return (data[0] << 24) |
+                (data[1] << 16) |
+                (data[2] << 8)  | 0xff;
         };
 
         /**
@@ -142,17 +143,15 @@ var Steppe = (function(Steppe) {
          *                   0..texturemap-width - 1.
          * @param {number} y The y-coordinate; must be in the range
          *                   0..texturemap-width - 1.
-         * @return {object} An object composed of RGB components for the
+         * @return {number} An integer composed of RGBA components for the
          *                  corresponding pixel.
          */
         var _getPixelFromTexturemap = function(x, y) {
             var index = (y << 12) + (x << 2);
 
-            return {
-                red:   _texturemap[index],
-                green: _texturemap[index + 1],
-                blue:  _texturemap[index + 2]
-            };
+            return (_texturemap[index] << 24) |
+                (_texturemap[index + 1] << 16) |
+                (_texturemap[index + 2] << 8) | 0xff;
         };
 
         /**
@@ -251,6 +250,326 @@ var Steppe = (function(Steppe) {
         };
 
         /**
+         * Render the terrain (landscape) with sprites.
+         *
+         * @param {number} initialAngle ...
+         */
+        var _renderBackToFront = function(initialAngle) {
+            /*
+             * 1. Construct a list of visible sprites; sprites are visible
+             *    where they fall within the -30..30 (60-degree) horizontal
+             *    field-of-view based on the direction that the camera is
+             *    pointing in.
+             * 2. For each visible sprite, determine its projected 2D coords
+             *    (x and y) and its scaled width and height based on distance
+             *    from the camera. The y coord corresponds to the bottom of the
+             *    sprite and the x coord is the centre of the width of the
+             *    sprite.
+             * 3. After drawing each row of terrain, draw any sprites where the
+             *    sprite's 'projected' row equals the current row. Remove the
+             *    sprite from the list of visible sprites.
+             * 4. Rinse and repeat.
+             */
+
+            var currentAngle = initialAngle;
+
+            var maximumRow = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
+
+            for (var row = 0; row <= maximumRow; ++row) {
+                for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
+                    var rayLength = _rayLengthLookupTable[
+                        (row << 8) + (row << 6) + ray];
+
+                    var rayX = _camera.x + rayLength *
+                        _cosineLookupTable[currentAngle] | 0,
+                        rayZ = _camera.z + rayLength *
+                        _sineLookupTable[currentAngle]   | 0;
+
+                    var u = rayX & 1023,
+                        v = rayZ & 1023;
+
+                    var height;
+                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
+                        rayZ < 1024 || rayZ > 1024 + 1024) &&
+                        _outOfBoundsHeightmap.length > 0) {
+                        height = _outOfBoundsHeightmap[(v << 10) + u];
+                    } else {
+                        height = _heightmap[(v << 10) + u];
+                    }
+
+                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
+
+                    var top    = _CANVAS_HEIGHT / 2 -
+                        (_camera.y - _CANVAS_HEIGHT) + row - scale,
+                        bottom = top + scale;
+
+                    var color = 0x000000ff;
+
+                    if (rayX < 1024 || rayX > 1024 + 1024 ||
+                        rayZ < 1024 || rayZ > 1024 + 1024) {
+                        var texel =
+                            _getPixelFromOutOfBoundsTexturemap(u, v);
+
+                        color = texel;
+                    } else {
+                        if (height < _waterHeight) {
+                            var data = _getPixelFromSky(ray, 200 - top);
+
+                            var texel =
+                                _getPixelFromTexturemap(u, v);
+
+                            var mixedColor = _alphaBlend(data, texel,
+                                (_waterHeight - height) /
+                                _waterHeight * 255 * 2 | 0);
+
+                            texel = mixedColor;
+
+                            height = _waterHeight;
+
+                            color = texel;
+                        } else {
+                            var texel =
+                                _getPixelFromTexturemap(u, v);
+
+                            color = texel;
+                        }
+                    }
+
+                    if (_fog) {
+                        var foggedTexel = _alphaBlend(texel, 0x7f7f7fff,
+                            row / 100 * 255 | 0);
+
+                        color = foggedTexel;
+                    }
+
+                    // Render sliver...
+                    if (bottom > 199) {
+                        bottom = 199;
+                    }
+
+                    _framebuffer.fillStyle = 'rgb(' +
+                        ((color >> 24) & 0xff) + ',' +
+                        ((color >> 16) & 0xff) + ',' +
+                        ((color >> 8)  & 0xff) + ')';
+                    if (ray > _quality) {
+                        // Not the left-most ray...
+                        _framebuffer.fillRect(ray, top - _smooth,
+                            _quality, bottom - top + 1);
+                    } else {
+                        // Left-most ray: we don't cast rays for column 0!
+                        _framebuffer.fillRect(0, top - _smooth, _quality << 1,
+                            bottom - top + 1);
+                    }
+
+                    currentAngle += _quality;
+                    if (currentAngle >=
+                        _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE) {
+                        currentAngle = 0;
+                    }
+                }
+
+                // For each visible sprite...
+                for (var i = 0; i < _visibleSpriteList.length; ++i) {
+                    // If the current sprite has been removed...
+                    if (_visibleSpriteList[i] === undefined) {
+                        // Move to the next sprite.
+                        continue;
+                    }
+
+                    var sprite = _visibleSpriteList[i];
+
+                    // If the current row matches the base of the sprite...
+                    if (row == sprite.row) {
+                        // Draw the sprite.
+                        _framebuffer.drawImage(
+                            sprite.image,
+                            sprite.x,
+                            sprite.y - _smooth,
+                            sprite.width,
+                            sprite.height);
+
+                        // Remove the sprite from the list of visible sprites.
+                        _visibleSpriteList[i] = undefined;
+                    }
+                }
+
+                // Reset the current angle to -30 degrees of centre.
+                currentAngle = initialAngle;
+            }
+        };
+
+        /**
+         * Render the terrain (landscape).
+         *
+         * @param {number} initialAngle ...
+         */
+        var _renderFrontToBack = function(initialAngle) {
+            var currentAngle = initialAngle;
+
+            var framebufferImageData = _framebuffer.createImageData(320, 200);
+            var framebufferData      = framebufferImageData.data;
+
+            for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
+                var previousTop = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
+
+                for (var row = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
+                    row >= 0; --row) {
+                    var rayLength = _rayLengthLookupTable[(row << 8) +
+                        (row << 6) + ray];
+
+                    var rayX = _camera.x + rayLength *
+                        _cosineLookupTable[currentAngle] | 0,
+                        rayZ = _camera.z + rayLength *
+                        _sineLookupTable[currentAngle]   | 0;
+
+                    var u = rayX & 1023;
+                    var v = rayZ & 1023;
+
+                    var height;
+                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
+                        rayZ < 1024 || rayZ > 1024 + 1024) &&
+                        _outOfBoundsHeightmap.length > 0) {
+                        height = _outOfBoundsHeightmap[(v << 10) + u];
+                    } else {
+                        height = _heightmap[(v << 10) + u];
+                    }
+
+                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
+
+                    var top    = _CANVAS_HEIGHT / 2 + row - scale,
+                        bottom = top + scale;
+
+                    if (top < previousTop) {
+                        bottom = previousTop;
+                        previousTop = top;
+
+                        var color = 0x000000ff;
+
+                        if (rayX < 1024 || rayX > 1024 + 1024 ||
+                            rayZ < 1024 || rayZ > 1024 + 1024) {
+                            var texel =
+                                _getPixelFromOutOfBoundsTexturemap(u, v);
+
+                            color = texel;
+                        } else {
+                            if (height < _waterHeight) {
+                                var data = _getPixelFromSky(ray,
+                                    200 - top);
+
+                                var texel =
+                                    _getPixelFromTexturemap(u, v);
+
+                                var mixedColor = _alphaBlend(data,
+                                    texel, (_waterHeight - height) /
+                                    _waterHeight * 255 * 2 | 0);
+
+                                texel = mixedColor;
+
+                                height = _waterHeight;
+
+                                color = texel;
+                            } else {
+                                var texel =
+                                    _getPixelFromTexturemap(u, v);
+
+                                color = texel;
+                            }
+                        }
+
+                        if (_fog) {
+                            var foggedTexel = _alphaBlend(texel,
+                                0x7f7f7fff, row / 100 * 255 | 0);
+
+                            color = foggedTexel;
+                        }
+
+                        if (bottom > 199) {
+                            bottom = 199;
+                        }
+
+                        if (ray > _quality) {
+                            // Not the left-most ray...
+                            var index =
+                                (top * (framebufferImageData.width * 4)) +
+                                (ray * 4);
+
+                            for (var j = 0; j < bottom - top + 1; ++j) {
+                                for (var i = 0; i < _quality; ++i) {
+                                    framebufferData[index]     =
+                                        (color >> 24) & 0xff;
+                                    framebufferData[index + 1] =
+                                        (color >> 16) & 0xff;
+                                    framebufferData[index + 2] =
+                                        (color >> 8)  & 0xff;
+                                    framebufferData[index + 3] = 0xff;
+
+                                    index += 4;
+                                }
+
+                                index += framebufferImageData.width * 4 -
+                                    4 * _quality;
+                            }
+                        } else {
+                            // Left-most ray: we don't cast rays for column 0!
+                            var index =
+                                (top * (framebufferImageData.width * 4)) +
+                                (ray * 4);
+
+                            for (var j = 0; j < bottom - top + 1; ++j) {
+                                for (var i = 0; i < _quality; ++i) {
+                                    framebufferData[index - 4 * _quality]     =
+                                        (color >> 24) & 0xff;
+                                    framebufferData[index - 4 * _quality + 1] =
+                                        (color >> 16) & 0xff;
+                                    framebufferData[index - 4 * _quality + 2] =
+                                        (color >> 8)  & 0xff;
+                                    framebufferData[index - 4 * _quality + 3] =
+                                        0xff;
+
+                                    framebufferData[index]     =
+                                        (color >> 24) & 0xff;
+                                    framebufferData[index + 1] =
+                                        (color >> 16) & 0xff;
+                                    framebufferData[index + 2] =
+                                        (color >> 8)  & 0xff;
+                                    framebufferData[index + 3] = 0xff;
+
+                                    index += 4;
+                                }
+
+                                index += framebufferImageData.width * 4 -
+                                    4 * _quality;
+                            }
+                        }
+                    }
+                }
+
+                currentAngle += _quality;
+                if (currentAngle >= _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE) {
+                    currentAngle = 0;
+                }
+            }
+
+            var temporaryCanvas    = document.createElement('canvas');
+            temporaryCanvas.width  = 320;
+            temporaryCanvas.height = 200;
+
+            var temporaryContext   = temporaryCanvas.getContext('2d');
+            var temporaryImageData = temporaryContext.getImageData(0, 0,
+                320, 200);
+            var temporaryData      = temporaryImageData.data;
+
+            for (var i = 0; i < temporaryData.length; ++i) {
+                temporaryData[i] = framebufferData[i];
+            }
+
+            temporaryContext.putImageData(temporaryImageData, 0, 0);
+
+            _framebuffer.drawImage(temporaryCanvas, 0, 0 - _smooth,
+                _framebuffer.canvas.width, _framebuffer.canvas.height);
+        };
+
+        /**
          * Render the 360-degree panoramic sky based on the camera's angle
          * of rotation.
          */
@@ -287,445 +606,6 @@ var Steppe = (function(Steppe) {
                     320 - (skyWidth - angleOfRotation),
                     skyHeight, skyWidth - angleOfRotation, 0,
                     320 - (skyWidth - angleOfRotation), skyHeight);
-            }
-        };
-
-        /**
-         * Render the terrain (landscape).
-         */
-        var _renderTerrain = function() {
-            _framebuffer.fillStyle = '#7f7f7f';
-            _framebuffer.fillRect(0, 100, 320, 25);
-
-            var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
-
-            if (initialAngle < 0) {
-                initialAngle += _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
-            }
-
-            initialAngle |= 0;
-
-            var currentAngle = initialAngle;
-
-            for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                var previousTop = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
-
-                for (var row = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
-                    row >= 0; --row) {
-                    var rayLength = _rayLengthLookupTable[
-                        (row << 8) + (row << 6) + ray];
-
-                    var rayX = _camera.x + rayLength *
-                        _cosineLookupTable[currentAngle] | 0;
-                    var rayZ = _camera.z + rayLength *
-                        _sineLookupTable[currentAngle] | 0;
-
-                    var u = rayX & 1023;
-                    var v = rayZ & 1023;
-
-                    var height;
-                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) &&
-                        _outOfBoundsHeightmap.length > 0) {
-                        height = _outOfBoundsHeightmap[(v << 10) + u];
-                    } else {
-                        height = _heightmap[(v << 10) + u];
-                    }
-
-                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
-
-                    var top = _CANVAS_HEIGHT / 2 + row - scale,
-                        bottom = top + scale;
-
-                    if (top < previousTop) {
-                        bottom = previousTop;
-                        previousTop = top;
-
-                        var color = '';
-
-                        if (rayX < 1024 || rayX > 1024 + 1024 ||
-                            rayZ < 1024 || rayZ > 1024 + 1024) {
-                            var texel = _getPixelFromOutOfBoundsTexturemap(
-                                u, v);
-
-                            if (_fog) {
-                                var foggedTexel = _alphaBlend(texel,
-                                    { red: 127, green: 127, blue: 127 },
-                                    ~~(row / 100 * 255));
-
-                                texel = foggedTexel;
-                            }
-
-                            color = 'rgb(' + texel.red +
-                                ', ' + texel.green + ', ' +
-                                texel.blue + ')';
-                        } else {
-                            if (height < _waterHeight) {
-                                var data = _getPixelFromSky(ray,
-                                    200 - top);
-
-                                var texel = _getPixelFromTexturemap(u, v);
-
-                                var mixedColor = _alphaBlend(data,
-                                    texel, ~~((_waterHeight - height) /
-                                    _waterHeight * 255 * 2));
-
-                                texel = mixedColor;
-
-                                if (_fog) {
-                                    var foggedTexel = _alphaBlend(
-                                        mixedColor,
-                                        { red: 127, green: 127, blue: 127 },
-                                        ~~(row / 100 * 255));
-
-                                    texel = foggedTexel;
-                                }
-
-                                height = _waterHeight;
-
-                                color = 'rgb(' + texel.red + ', ' +
-                                    texel.green + ', ' +
-                                    texel.blue + ')';
-                            } else {
-                                var texel = _getPixelFromTexturemap(u, v);
-
-                                if (_fog) {
-                                    var foggedTexel = _alphaBlend(texel,
-                                        { red: 127, green: 127, blue: 127 },
-                                        ~~(row / 100 * 255));
-
-                                    texel = foggedTexel;
-                                }
-
-                                color = 'rgb(' + texel.red +
-                                    ', ' + texel.green + ', ' +
-                                    texel.blue + ')';
-                            }
-                        }
-
-                        // Render sliver...
-                        if (bottom > 199) {
-                            bottom = 199;
-                        }
-
-                        _framebuffer.fillStyle = color;
-                        if (ray > _quality) {
-                            // Not the left-most ray...
-                            _framebuffer.fillRect(ray, top - _smooth,
-                                _quality, bottom - top + 1);
-                        } else {
-                            // Left-most ray: we don't cast rays for
-                            // column 0!
-                            _framebuffer.fillRect(0, top - _smooth,
-                                _quality << 1, bottom - top + 1);
-                        }
-                    }
-                }
-
-                currentAngle += _quality;
-                if (currentAngle >=
-                    _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE) {
-                    currentAngle = 0;
-                }
-            }
-        };
-
-        /**
-         * Render the terrain (landscape) with sprites.
-         */
-        var _renderTerrainWithSprites = function() {
-            /*
-             * 1. Construct a list of visible sprites; sprites are visible
-             *    where they fall within the -30..30 (60-degree) horizontal
-             *    field-of-view based on the direction that the camera is
-             *    pointing in.
-             * 2. For each visible sprite, determine its projected 2D coords
-             *    (x and y) and its scaled width and height based on distance
-             *    from the camera. The y coord corresponds to the bottom of the
-             *    sprite and the x coord is the centre of the width of the
-             *    sprite.
-             * 3. After drawing each row of terrain, draw any sprites where the
-             *    sprite's 'projected' row equals the current row. Remove the
-             *    sprite from the list of visible sprites.
-             * 4. Rinse and repeat.
-             */
-
-            // Fill the upper region of the framebuffer with the fog-colour.
-            _framebuffer.fillStyle = '#7f7f7f';
-            _framebuffer.fillRect(0, 100, 320, 25);
-
-            // Empty the list of visible sprites.
-            _visibleSpriteList.length = 0;
-
-            // Calculate the unit vector of the camera.
-            var cameraVectorX = Math.cos(_camera.angle * _ANGULAR_INCREMENT *
-                _DEGREES_TO_RADIANS);
-            var cameraVectorZ = Math.sin(_camera.angle * _ANGULAR_INCREMENT *
-                _DEGREES_TO_RADIANS);
-
-            // For each sprite...
-            for (var i = 0; i < _spriteList.length; ++i) {
-                var sprite = _spriteList[i];
-
-                // Calculate the vector of the sprite.
-                var spriteVectorX = sprite.x - _camera.x;
-                var spriteVectorZ = sprite.z - _camera.z;
-
-                // Calculate the magnitude (length of the vector) to determine
-                // the distance from the camera to the sprite.
-                var vectorLength = Math.sqrt(
-                    spriteVectorX * spriteVectorX +
-                    spriteVectorZ * spriteVectorZ);
-
-                // Normalise the sprite vector to become the unit vector.
-                spriteVectorX /= vectorLength;
-                spriteVectorZ /= vectorLength;
-
-                // Calculate the dot product of the camera and sprite vectors.
-                var dotProduct = cameraVectorX * spriteVectorX +
-                    cameraVectorZ * spriteVectorZ;
-
-                // If the dot product is negative...
-                if (dotProduct < 0) {
-                    // The sprite is behind the camera, so clearly not in view.
-                    // Move to the next sprite.
-                    continue;
-                }
-
-                // Calculate the angle (theta) between the camera vector and
-                // the sprite vector.
-                var theta = Math.acos(dotProduct);
-
-                // If the angle (theta) is less than or equal to 30 degrees...
-                // NOTE: We do NOT need to check the lower bound (-30 degrees)
-                // because theta will /never/ be negative.
-                if (theta <= _THIRTY_DEGREE_ANGLE * _FAKE_DEGREES_TO_RADIANS) {
-                    var scale = _SCALE_FACTOR / (vectorLength + 1);
-
-                    // Scale the projected sprite.
-                    var width  = scale * sprite.image.width  | 0;
-                    var height = scale * sprite.image.height | 0;
-
-                    // Calculate the cross product. The cross product differs
-                    // from the dot product in a crucial way: the result is
-                    // *signed*!
-                    var crossProduct = cameraVectorX * spriteVectorZ -
-                        spriteVectorX * cameraVectorZ;
-
-                    // Calculate the projected x coord relative to the
-                    // horizonal centre of the canvas. We add or subtract the
-                    // value dependent on the sign of the cross product.
-                    var x;
-                    if (crossProduct < 0) {
-                        x = _CANVAS_WIDTH / 2 -
-                            theta * _RADIANS_TO_FAKE_DEGREES | 0;
-                    } else {
-                        x = _CANVAS_WIDTH / 2 +
-                            theta * _RADIANS_TO_FAKE_DEGREES | 0;
-                    }
-
-                    // Calculate the 3D coords of the sprite.
-                    var spriteX = sprite.x;
-                    var spriteY = _heightmap[((sprite.z & 1023) << 10) +
-                        (sprite.x & 1023)];
-                    var spriteZ = sprite.z;
-
-                    var row = _getRow(spriteX, spriteZ, x);
-
-                    // Centre the scaled sprite.
-                    x -= width / 2;
-
-                    var rayX = spriteX;
-                    var rayZ = spriteZ;
-
-                    var u = rayX & 1023;
-                    var v = rayZ & 1023;
-
-                    var projectedHeight;
-                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) &&
-                        _outOfBoundsHeightmap.length > 0) {
-                        projectedHeight = _outOfBoundsHeightmap[(v << 10) + u];
-                    } else {
-                        projectedHeight = _heightmap[(v << 10) + u];
-                    }
-
-                    var projectedScale = projectedHeight * scale;
-
-                    var top = _CANVAS_HEIGHT / 2 -
-                        (_camera.y - _CANVAS_HEIGHT) + row -
-                        projectedScale,
-                        bottom = top + projectedScale;
-
-                    // Add the projected sprite to the list of visible sprites.
-                    // NOTE: Thus far, only the scaled width and height,
-                    // vectorLength, x and image are guaranteed to be correct.
-                    _visibleSpriteList.push({
-                        height:       height,
-                        image:        sprite.image,
-                        row:          bottom | 0,
-                        vectorLength: vectorLength,
-                        width:        width,
-                        x:            x | 0,
-                        y:            top - height | 0
-                    });
-                }
-            }
-
-            var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
-
-            if (initialAngle < 0) {
-                initialAngle += _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
-            }
-
-            initialAngle |= 0;
-
-            var currentAngle = initialAngle;
-
-            var maximumRow = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
-
-            for (var row = 0; row <= maximumRow; ++row) {
-
-                for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                    var rayLength = _rayLengthLookupTable[
-                        (row << 8) + (row << 6) + ray];
-
-                    var rayX = _camera.x + rayLength *
-                        _cosineLookupTable[currentAngle] | 0;
-                    var rayZ = _camera.z + rayLength *
-                        _sineLookupTable[currentAngle] | 0;
-
-                    var u = rayX & 1023;
-                    var v = rayZ & 1023;
-
-                    var height;
-                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) &&
-                        _outOfBoundsHeightmap.length > 0) {
-                        height = _outOfBoundsHeightmap[(v << 10) + u];
-                    } else {
-                        height = _heightmap[(v << 10) + u];
-                    }
-
-                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
-
-                    var top = _CANVAS_HEIGHT / 2 -
-                        (_camera.y - _CANVAS_HEIGHT) + row - scale,
-                        bottom = top + scale;
-
-                    var color = '';
-
-                    if (rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) {
-                        var texel = _getPixelFromOutOfBoundsTexturemap(
-                            u, v);
-
-                        if (_fog) {
-                            var foggedTexel = _alphaBlend(texel,
-                                { red: 127, green: 127, blue: 127 },
-                                ~~(row / 100 * 255));
-
-                            texel = foggedTexel;
-                        }
-
-                        color = 'rgb(' + texel.red +
-                            ', ' + texel.green + ', ' +
-                            texel.blue + ')';
-                    } else {
-                        if (height < _waterHeight) {
-                            var data = _getPixelFromSky(ray,
-                                200 - top);
-
-                            var texel = _getPixelFromTexturemap(u, v);
-
-                            var mixedColor = _alphaBlend(data,
-                                texel, ~~((_waterHeight - height) /
-                                _waterHeight * 255 * 2));
-
-                            texel = mixedColor;
-
-                            if (_fog) {
-                                var foggedTexel = _alphaBlend(
-                                    mixedColor,
-                                    { red: 127, green: 127, blue: 127 },
-                                    ~~(row / 100 * 255));
-
-                                texel = foggedTexel;
-                            }
-
-                            height = _waterHeight;
-
-                            color = 'rgb(' + texel.red + ', ' +
-                                texel.green + ', ' +
-                                texel.blue + ')';
-                        } else {
-                            var texel = _getPixelFromTexturemap(u, v);
-
-                            if (_fog) {
-                                var foggedTexel = _alphaBlend(texel,
-                                    { red: 127, green: 127, blue: 127 },
-                                    ~~(row / 100 * 255));
-
-                                texel = foggedTexel;
-                            }
-
-                            color = 'rgb(' + texel.red +
-                                ', ' + texel.green + ', ' +
-                                texel.blue + ')';
-                        }
-                    }
-
-                    // Render sliver...
-                    if (bottom > 199) {
-                        bottom = 199;
-                    }
-
-                    _framebuffer.fillStyle = color;
-                    if (ray > _quality) {
-                        // Not the left-most ray...
-                        _framebuffer.fillRect(ray, top - _smooth,
-                            _quality, bottom - top + 1);
-                    } else {
-                        // Left-most ray: we don't cast rays for
-                        // column 0!
-                        _framebuffer.fillRect(0, top - _smooth,
-                            _quality << 1, bottom - top + 1);
-                    }
-
-                    currentAngle += _quality;
-                    if (currentAngle >=
-                        _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE) {
-                        currentAngle = 0;
-                    }
-                }
-
-                // For each 'visible' sprite...
-                for (var i = 0; i < _visibleSpriteList.length; ++i) {
-                    // If the current sprite has been removed...
-                    if (_visibleSpriteList[i] === undefined) {
-                        // Move to the next sprite.
-                        continue;
-                    }
-
-                    var sprite = _visibleSpriteList[i];
-
-                    // If the current row matches the base of the sprite...
-                    if (row == sprite.row) {
-                        // Draw the sprite.
-                        _framebuffer.drawImage(
-                            sprite.image,
-                            sprite.x,
-                            sprite.y - _smooth,
-                            sprite.width,
-                            sprite.height);
-
-                        // Remove the sprite from the list of visible sprites.
-                        _visibleSpriteList[i] = undefined;
-                    }
-                }
-
-                // Reset the current angle to -30 degrees of centre.
-                currentAngle = initialAngle;
             }
         };
 
@@ -872,15 +752,170 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * Render the terrain (landscape) including the sky.
+             * Render the terrain (landscape) including the sky and any visible
+             * sprites.
              */
             render: function() {
                 _renderSky();
-                if (_spriteList.length > 0) {
-                    _renderTerrainWithSprites();
-                } else {
-                    _renderTerrain();
+
+                // Fill the upper region of the framebuffer with the
+                // fog-colour.
+                _framebuffer.fillStyle = '#7f7f7f';
+                _framebuffer.fillRect(0, 100, 320, 25);
+
+                // Empty the list of visible sprites.
+                _visibleSpriteList.length = 0;
+
+                // Calculate the unit vector of the camera.
+                var cameraVectorX = Math.cos(_camera.angle *
+                    _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
+                var cameraVectorZ = Math.sin(_camera.angle *
+                    _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
+
+                // For each sprite...
+                for (var i = 0; i < _spriteList.length; ++i) {
+                    var sprite = _spriteList[i];
+
+                    // Calculate the vector of the sprite.
+                    var spriteVectorX = sprite.x - _camera.x,
+                        spriteVectorZ = sprite.z - _camera.z;
+
+                    // Calculate the magnitude (length of the vector) to
+                    // determine the distance from the camera to the sprite.
+                    var vectorLength = Math.sqrt(
+                        spriteVectorX * spriteVectorX +
+                        spriteVectorZ * spriteVectorZ);
+
+                    // If the distance from the camera to the sprite is outside
+                    // the viewing frustum...
+                    if (vectorLength > 400) {
+                        // Move to the next sprite.
+                        continue;
+                    }
+
+                    // Normalise the sprite vector to become the unit vector.
+                    spriteVectorX /= vectorLength;
+                    spriteVectorZ /= vectorLength;
+
+                    // Calculate the dot product of the camera and sprite
+                    // vectors.
+                    var dotProduct = cameraVectorX * spriteVectorX +
+                        cameraVectorZ * spriteVectorZ;
+
+                    // If the dot product is negative...
+                    if (dotProduct < 0) {
+                        // The sprite is behind the camera, so clearly not in
+                        // view. Move to the next sprite.
+                        continue;
+                    }
+
+                    // Calculate the angle (theta) between the camera vector
+                    // and the sprite vector.
+                    var theta = Math.acos(dotProduct);
+
+                    // If the angle (theta) is less than or equal to 30
+                    // degrees...
+                    // NOTE: We do NOT need to check the lower bound (-30
+                    // degrees) because theta will /never/ be negative.
+                    if (theta <= _THIRTY_DEGREE_ANGLE *
+                        _FAKE_DEGREES_TO_RADIANS) {
+                        var scale = _SCALE_FACTOR / (vectorLength + 1);
+
+                        // Scale the projected sprite.
+                        var width  = scale * sprite.image.width  | 0;
+                        var height = scale * sprite.image.height | 0;
+
+                        // Calculate the cross product. The cross product
+                        // differs from the dot product in a crucial way: the
+                        // result is *signed*!
+                        var crossProduct = cameraVectorX * spriteVectorZ -
+                            spriteVectorX * cameraVectorZ;
+
+                        // Calculate the projected x coord relative to the
+                        // horizontal centre of the canvas. We add or subtract
+                        // the value dependent on the sign of the cross
+                        // product.
+                        var x;
+                        if (crossProduct < 0) {
+                            x = _CANVAS_WIDTH / 2 - theta *
+                                _RADIANS_TO_FAKE_DEGREES | 0;
+                        } else {
+                            x = _CANVAS_WIDTH / 2 + theta *
+                                _RADIANS_TO_FAKE_DEGREES | 0;
+                        }
+
+                        // Calculate the 3D coords of the sprite.
+                        var spriteX = sprite.x,
+                            spriteY = _heightmap[((sprite.z & 1023) << 10) +
+                            (sprite.x & 1023)],
+                            spriteZ = sprite.z;
+
+                        var row = _getRow(spriteX, spriteZ, x);
+
+                        // Centre the scaled sprite.
+                        x -= width / 2;
+
+                        var rayX = spriteX,
+                            rayZ = spriteZ;
+
+                        var u = rayX & 1023,
+                            v = rayZ & 1023;
+
+                        var projectedHeight;
+                        if ((rayX < 1024 || rayX > 1024 + 1024 ||
+                            rayZ < 1024 || rayZ > 1024 + 1024) &&
+                            _outOfBoundsHeightmap.length > 0) {
+                            projectedHeight = _outOfBoundsHeightmap[
+                                (v << 10) + u];
+                        } else {
+                            projectedHeight = _heightmap[(v << 10) + u];
+                        }
+
+                        var projectedScale = projectedHeight * scale;
+
+                        var top = _CANVAS_HEIGHT / 2 -
+                            (_camera.y - _CANVAS_HEIGHT) + row -
+                            projectedScale,
+                            bottom = top + projectedScale;
+
+                        // Add the projected sprite to the list of visible
+                        // sprites.
+                        _visibleSpriteList.push({
+                            height:       height,
+                            image:        sprite.image,
+                            row:          bottom | 0,
+                            vectorLength: vectorLength,
+                            width:        width,
+                            x:            x | 0,
+                            y:            top - height | 0
+                        });
+                    }
                 }
+
+                var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
+
+                if (initialAngle < 0) {
+                    initialAngle += _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE;
+                }
+
+                initialAngle |= 0;
+
+//                var date = new Date();
+//                var startTime = date.getTime();
+
+                // If there are sprites in view...
+                if (_visibleSpriteList.length > 0) {
+                    // Render the terrain /with/ sprites back-to-front.
+                    _renderBackToFront(initialAngle);
+                } else {
+                    // Render the terrain front-to-back. NOTE: This method is
+                    // considerably faster!
+                    _renderFrontToBack(initialAngle);
+                }
+
+//                var date2 = new Date();
+//                var endTime = date2.getTime();
+//                console.log(endTime - startTime);
             },
 
             /**

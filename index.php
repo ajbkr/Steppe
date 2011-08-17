@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-gb">
   <head>
-    <script type="text/javascript" src="http://fleetingfantasy.com/js/jquery/jquery-1.5.min.js"></script> 
+    <script type="text/javascript" src="http://fleetingfantasy.com/js/jquery/jquery-1.6.2.min.js"></script> 
     <script type="text/javascript" src="http://fleetingfantasy.com/js/jquery/plugins/jquery.loadImages.1.0.1.min.js"></script>
 <style type="text/css">
 body {
@@ -15,7 +15,7 @@ body {
     <h1>Steppe</h1>
     <h2>Client-side/Server-side Rendering Comparison</h2>
     <h3>JavaScript (HTML5 Canvas)</h3>
-    <canvas id="canvas" height="400" width="640">
+    <canvas id="canvas" style="height: 400px; width: 640px" height="200" width="320">
       <p>
         Your Web browser does not support the canvas element.
       </p>
@@ -52,37 +52,34 @@ var Comparison = (function(undefined) {
 
             var compositor = Steppe.Compositor();
 
-            var images = [];
-            var date = Number(new Date());
+            var images = {
+                'sky':        '/images/sky.png',
+                'heightmap':  '/images/heightmap.png',
+                'texturemap': '/images/texturemap.png',
+                'sprite':     '/images/sprite.png'
+            };
 
-            $.loadImages([
-                '/images/sky.png'        + '?' + date,
-                '/images/heightmap.png'  + '?' + date,
-                '/images/texturemap.png' + '?' + date,
-                '/images/sprite.png'     + '?' + date
-            ], function() {
-                images[0] = new Image();
-                images[0].src = '/images/sky.png' + '?' + date;
-                images[1] = new Image();
-                images[1].src = '/images/heightmap.png' + '?' + date;
-                images[2] = new Image();
-                images[2].src = '/images/texturemap.png' + '?' + date;
-                images[3] = new Image();
-                images[3].src = '/images/sprite.png' + '?' + date;
+            $.loadImages($.map(images, function(v) { return v; }), function() {
+                $.each(images, function(name, src) {
+                    var image = new Image();
+                    image.src = src;
+                    images[name] = image;
+                });
 
                 var skyCanvas = document.createElement('canvas');
                 skyCanvas.width  = 1920;
                 skyCanvas.height = 100;
                 var skyContext = skyCanvas.getContext('2d');
 
-                skyContext.drawImage(images[0], 0, 0);
+                skyContext.drawImage(images['sky'], 0, 0);
 
                 var heightmapCanvas = document.createElement('canvas');
                 heightmapCanvas.width  = 1024;
                 heightmapCanvas.height = 1024;
                 var heightmapContext = heightmapCanvas.getContext('2d');
 
-                heightmapContext.drawImage(images[1], 0, 0, 1024, 1024);
+                heightmapContext.drawImage(images['heightmap'], 0, 0, 1024,
+                    1024);
 
                 compositor.setHeightmap(heightmapCanvas);
 
@@ -91,29 +88,29 @@ var Comparison = (function(undefined) {
                 texturemapCanvas.height = 1024;
                 var texturemapContext = texturemapCanvas.getContext('2d');
 
-                texturemapContext.drawImage(images[2], 0, 0, 1024, 1024);
+                texturemapContext.drawImage(images['texturemap'], 0, 0, 1024,
+                    1024);
 
                 renderer.setTexturemap(texturemapCanvas)
                     .setOutOfBoundsTexturemap(heightmapCanvas)
                     .setQuality('high')
-//                    .setQuality('low')
                     .setSky(skyCanvas)
                     .setHeightmap(compositor.getHeightmap())
                     .setOutOfBoundsHeightmap(
                         compositor.getOutOfBoundsHeightmap())
-//                    .enable('smooth')
-                    .enable('fog')
-                    .enable('reflection-map')
-                    .setWaterHeight(_WATER_HEIGHT)
+//                    .enable('fog')
+                    .enable('smooth')
+//                    .enable('reflection-map')
+//                    .setWaterHeight(82)
                 ;
 
-                renderer.addSprite(images[3], 1024 + 512, 1024 + 512);
+//                renderer.addSprite(images['sprite'], 1024 + 512 + 32,
+//                    1024 + 512 + 128 + 32);
 
                 renderer.setCamera({
-//                    angle: 240,
                     angle: 255,
                     x:     1024 + 768 - 128 - 96,
-                    y:     165,
+                    y:     200,
                     z:     1024 + 768 + 128
                 });
 
