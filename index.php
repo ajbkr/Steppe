@@ -93,19 +93,19 @@ var Comparison = (function(undefined) {
 
                 renderer.setTexturemap(texturemapCanvas)
                     .setOutOfBoundsTexturemap(heightmapCanvas)
-                    .setQuality('high')
+                    .setQuality('low')
                     .setSky(skyCanvas)
                     .setHeightmap(compositor.getHeightmap())
                     .setOutOfBoundsHeightmap(
                         compositor.getOutOfBoundsHeightmap())
 //                    .enable('fog')
-                    .enable('smooth')
+//                    .enable('smooth')
 //                    .enable('reflection-map')
 //                    .setWaterHeight(82)
                 ;
 
-//                renderer.addSprite(images['sprite'], 1024 + 512 + 32,
-//                    1024 + 512 + 128 + 32);
+                renderer.addSprite(images['sprite'], 1024 + 512 + 32,
+                    1024 + 512 + 128 + 32);
 
                 renderer.setCamera({
                     angle: 255,

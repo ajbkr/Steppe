@@ -41,6 +41,7 @@ var Steppe = (function(Steppe) {
             _sineLookupTable = [],
             _sky = undefined,
             _spriteList = [],
+            _temporaryFramebuffer = undefined,
             _texturemap = undefined,
             _visibleSpriteList = [];
 
@@ -273,6 +274,10 @@ var Steppe = (function(Steppe) {
 
             var currentAngle = initialAngle;
 
+            var framebufferImageData = _temporaryFramebuffer.createImageData(
+                320, 200);
+            var framebufferData      = framebufferImageData.data;
+
             var maximumRow = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
 
             for (var row = 0; row <= maximumRow; ++row) {
@@ -347,18 +352,59 @@ var Steppe = (function(Steppe) {
                         bottom = 199;
                     }
 
-                    _framebuffer.fillStyle = 'rgb(' +
-                        ((color >> 24) & 0xff) + ',' +
-                        ((color >> 16) & 0xff) + ',' +
-                        ((color >> 8)  & 0xff) + ')';
                     if (ray > _quality) {
                         // Not the left-most ray...
-                        _framebuffer.fillRect(ray, top - _smooth,
-                            _quality, bottom - top + 1);
+                        var index =
+                            (top * (framebufferImageData.width * 4)) +
+                            (ray * 4);
+
+                        for (var j = 0; j < bottom - top + 1; ++j) {
+                            for (var i = 0; i < _quality; ++i) {
+                                framebufferData[index]     =
+                                    (color >> 24) & 0xff;
+                                framebufferData[index + 1] =
+                                    (color >> 16) & 0xff;
+                                framebufferData[index + 2] =
+                                    (color >> 8)  & 0xff;
+                                framebufferData[index + 3] = 0xff;
+
+                                index += 4;
+                            }
+
+                            index += framebufferImageData.width * 4 -
+                                4 * _quality;
+                        }
                     } else {
                         // Left-most ray: we don't cast rays for column 0!
-                        _framebuffer.fillRect(0, top - _smooth, _quality << 1,
-                            bottom - top + 1);
+                        var index =
+                            (top * (framebufferImageData.width * 4)) +
+                            (ray * 4);
+
+                        for (var j = 0; j < bottom - top + 1; ++j) {
+                            for (var i = 0; i < _quality; ++i) {
+                                framebufferData[index - 4 * _quality]     =
+                                    (color >> 24) & 0xff;
+                                framebufferData[index - 4 * _quality + 1] =
+                                    (color >> 16) & 0xff;
+                                framebufferData[index - 4 * _quality + 2] =
+                                    (color >> 8)  & 0xff;
+                                framebufferData[index - 4 * _quality + 3] =
+                                    0xff;
+
+                                framebufferData[index]     =
+                                    (color >> 24) & 0xff;
+                                framebufferData[index + 1] =
+                                    (color >> 16) & 0xff;
+                                framebufferData[index + 2] =
+                                    (color >> 8)  & 0xff;
+                                framebufferData[index + 3] = 0xff;
+
+                                index += 4;
+                            }
+
+                            index += framebufferImageData.width * 4 -
+                                4 * _quality;
+                        }
                     }
 
                     currentAngle += _quality;
@@ -367,6 +413,11 @@ var Steppe = (function(Steppe) {
                         currentAngle = 0;
                     }
                 }
+
+                framebufferImageData.data = framebufferData;
+                _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
+
+                var spritesDrawn = false;
 
                 // For each visible sprite...
                 for (var i = 0; i < _visibleSpriteList.length; ++i) {
@@ -381,7 +432,7 @@ var Steppe = (function(Steppe) {
                     // If the current row matches the base of the sprite...
                     if (row == sprite.row) {
                         // Draw the sprite.
-                        _framebuffer.drawImage(
+                        _temporaryFramebuffer.drawImage(
                             sprite.image,
                             sprite.x,
                             sprite.y - _smooth,
@@ -390,12 +441,28 @@ var Steppe = (function(Steppe) {
 
                         // Remove the sprite from the list of visible sprites.
                         _visibleSpriteList[i] = undefined;
+
+                        spritesDrawn = true;
                     }
+                }
+
+                if (spritesDrawn) {
+                    framebufferImageData = _temporaryFramebuffer.getImageData(
+                        0, 0, 320, 200);
+                    framebufferData = framebufferImageData.data;
                 }
 
                 // Reset the current angle to -30 degrees of centre.
                 currentAngle = initialAngle;
             }
+
+            framebufferImageData.data = framebufferData;
+            _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
+
+            _framebuffer.drawImage(_temporaryFramebuffer.canvas,
+                0, 0 - _smooth,
+                _temporaryFramebuffer.canvas.width,
+                _temporaryFramebuffer.canvas.height);
         };
 
         /**
@@ -406,7 +473,8 @@ var Steppe = (function(Steppe) {
         var _renderFrontToBack = function(initialAngle) {
             var currentAngle = initialAngle;
 
-            var framebufferImageData = _framebuffer.createImageData(320, 200);
+            var framebufferImageData = _temporaryFramebuffer.createImageData(
+                320, 200);
             var framebufferData      = framebufferImageData.data;
 
             for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
@@ -550,23 +618,13 @@ var Steppe = (function(Steppe) {
                 }
             }
 
-            var temporaryCanvas    = document.createElement('canvas');
-            temporaryCanvas.width  = 320;
-            temporaryCanvas.height = 200;
+            framebufferImageData.data = framebufferData;
+            _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
 
-            var temporaryContext   = temporaryCanvas.getContext('2d');
-            var temporaryImageData = temporaryContext.getImageData(0, 0,
-                320, 200);
-            var temporaryData      = temporaryImageData.data;
-
-            for (var i = 0; i < temporaryData.length; ++i) {
-                temporaryData[i] = framebufferData[i];
-            }
-
-            temporaryContext.putImageData(temporaryImageData, 0, 0);
-
-            _framebuffer.drawImage(temporaryCanvas, 0, 0 - _smooth,
-                _framebuffer.canvas.width, _framebuffer.canvas.height);
+            _framebuffer.drawImage(_temporaryFramebuffer.canvas,
+                0, 0 - _smooth,
+                _temporaryFramebuffer.canvas.width,
+                _temporaryFramebuffer.canvas.height);
         };
 
         /**
@@ -621,6 +679,12 @@ var Steppe = (function(Steppe) {
         }
 
         _framebuffer = canvas.getContext('2d');
+
+        var temporaryFramebufferCanvas    = document.createElement('canvas');
+        temporaryFramebufferCanvas.width  = canvas.width;
+        temporaryFramebufferCanvas.height = canvas.height;
+
+        _temporaryFramebuffer = temporaryFramebufferCanvas.getContext('2d');
 
         _initSineAndCosineLookupTables();
         _initInverseDistortionLookupTable();
