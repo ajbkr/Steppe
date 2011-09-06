@@ -294,8 +294,8 @@ var Steppe = (function(Steppe) {
                         v = rayZ & 1023;
 
                     var height;
-                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) &&
+                    if ((rayX < 1024 || rayX >= 1024 + 1024 ||
+                        rayZ < 1024 || rayZ >= 1024 + 1024) &&
                         _outOfBoundsHeightmap.length > 0) {
                         height = _outOfBoundsHeightmap[(v << 10) + u];
                     } else {
@@ -304,14 +304,14 @@ var Steppe = (function(Steppe) {
 
                     var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top    = _CANVAS_HEIGHT / 2 -
+                    var top    = (_CANVAS_HEIGHT >> 1) -
                         (_camera.y - _CANVAS_HEIGHT) + row - scale,
                         bottom = top + scale;
 
                     var color = 0x000000ff;
 
-                    if (rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) {
+                    if (rayX < 1024 || rayX >= 1024 + 1024 ||
+                        rayZ < 1024 || rayZ >= 1024 + 1024) {
                         var texel =
                             _getPixelFromOutOfBoundsTexturemap(u, v);
 
@@ -355,8 +355,8 @@ var Steppe = (function(Steppe) {
                     if (ray > _quality) {
                         // Not the left-most ray...
                         var index =
-                            (top * (framebufferImageData.width * 4)) +
-                            (ray * 4);
+                            (top * (framebufferImageData.width << 2)) +
+                            (ray << 2);
 
                         for (var j = 0; j < bottom - top + 1; ++j) {
                             for (var i = 0; i < _quality; ++i) {
@@ -371,24 +371,24 @@ var Steppe = (function(Steppe) {
                                 index += 4;
                             }
 
-                            index += framebufferImageData.width * 4 -
-                                4 * _quality;
+                            index += (framebufferImageData.width << 2) -
+                                (_quality << 2);
                         }
                     } else {
                         // Left-most ray: we don't cast rays for column 0!
                         var index =
-                            (top * (framebufferImageData.width * 4)) +
-                            (ray * 4);
+                            (top * (framebufferImageData.width << 2)) +
+                            (ray << 2);
 
                         for (var j = 0; j < bottom - top + 1; ++j) {
                             for (var i = 0; i < _quality; ++i) {
-                                framebufferData[index - 4 * _quality]     =
+                                framebufferData[index - (_quality << 2)]     =
                                     (color >> 24) & 0xff;
-                                framebufferData[index - 4 * _quality + 1] =
+                                framebufferData[index - (_quality << 2) + 1] =
                                     (color >> 16) & 0xff;
-                                framebufferData[index - 4 * _quality + 2] =
+                                framebufferData[index - (_quality << 2) + 2] =
                                     (color >> 8)  & 0xff;
-                                framebufferData[index - 4 * _quality + 3] =
+                                framebufferData[index - (_quality << 2) + 3] =
                                     0xff;
 
                                 framebufferData[index]     =
@@ -402,8 +402,8 @@ var Steppe = (function(Steppe) {
                                 index += 4;
                             }
 
-                            index += framebufferImageData.width * 4 -
-                                4 * _quality;
+                            index += (framebufferImageData.width << 2) -
+                                (_quality << 2);
                         }
                     }
 
@@ -414,7 +414,6 @@ var Steppe = (function(Steppe) {
                     }
                 }
 
-                framebufferImageData.data = framebufferData;
                 _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
 
                 var spritesDrawn = false;
@@ -456,7 +455,6 @@ var Steppe = (function(Steppe) {
                 currentAngle = initialAngle;
             }
 
-            framebufferImageData.data = framebufferData;
             _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
 
             _framebuffer.drawImage(_temporaryFramebuffer.canvas,
@@ -478,9 +476,9 @@ var Steppe = (function(Steppe) {
             var framebufferData      = framebufferImageData.data;
 
             for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                var previousTop = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
+                var previousTop = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
 
-                for (var row = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1;
+                for (var row = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
                     row >= 0; --row) {
                     var rayLength = _rayLengthLookupTable[(row << 8) +
                         (row << 6) + ray];
@@ -494,8 +492,8 @@ var Steppe = (function(Steppe) {
                     var v = rayZ & 1023;
 
                     var height;
-                    if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                        rayZ < 1024 || rayZ > 1024 + 1024) &&
+                    if ((rayX < 1024 || rayX >= 1024 + 1024 ||
+                        rayZ < 1024 || rayZ >= 1024 + 1024) &&
                         _outOfBoundsHeightmap.length > 0) {
                         height = _outOfBoundsHeightmap[(v << 10) + u];
                     } else {
@@ -504,7 +502,8 @@ var Steppe = (function(Steppe) {
 
                     var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top    = _CANVAS_HEIGHT / 2 + row - scale,
+                    var top    = (_CANVAS_HEIGHT >> 1) -
+                        (_camera.y - _CANVAS_HEIGHT) + row - scale,
                         bottom = top + scale;
 
                     if (top < previousTop) {
@@ -513,8 +512,8 @@ var Steppe = (function(Steppe) {
 
                         var color = 0x000000ff;
 
-                        if (rayX < 1024 || rayX > 1024 + 1024 ||
-                            rayZ < 1024 || rayZ > 1024 + 1024) {
+                        if (rayX < 1024 || rayX >= 1024 + 1024 ||
+                            rayZ < 1024 || rayZ >= 1024 + 1024) {
                             var texel =
                                 _getPixelFromOutOfBoundsTexturemap(u, v);
 
@@ -558,8 +557,8 @@ var Steppe = (function(Steppe) {
                         if (ray > _quality) {
                             // Not the left-most ray...
                             var index =
-                                (top * (framebufferImageData.width * 4)) +
-                                (ray * 4);
+                                (top * (framebufferImageData.width << 2)) +
+                                (ray << 2);
 
                             for (var j = 0; j < bottom - top + 1; ++j) {
                                 for (var i = 0; i < _quality; ++i) {
@@ -574,24 +573,28 @@ var Steppe = (function(Steppe) {
                                     index += 4;
                                 }
 
-                                index += framebufferImageData.width * 4 -
-                                    4 * _quality;
+                                index += (framebufferImageData.width << 2) -
+                                    (_quality << 2);
                             }
                         } else {
                             // Left-most ray: we don't cast rays for column 0!
                             var index =
-                                (top * (framebufferImageData.width * 4)) +
-                                (ray * 4);
+                                (top * (framebufferImageData.width << 2)) +
+                                (ray << 2);
 
                             for (var j = 0; j < bottom - top + 1; ++j) {
                                 for (var i = 0; i < _quality; ++i) {
-                                    framebufferData[index - 4 * _quality]     =
+                                    framebufferData[index -
+                                        (_quality << 2)]     =
                                         (color >> 24) & 0xff;
-                                    framebufferData[index - 4 * _quality + 1] =
+                                    framebufferData[index -
+                                        (_quality << 2) + 1] =
                                         (color >> 16) & 0xff;
-                                    framebufferData[index - 4 * _quality + 2] =
+                                    framebufferData[index -
+                                        (_quality << 2) + 2] =
                                         (color >> 8)  & 0xff;
-                                    framebufferData[index - 4 * _quality + 3] =
+                                    framebufferData[index -
+                                        (_quality << 2) + 3] =
                                         0xff;
 
                                     framebufferData[index]     =
@@ -605,8 +608,8 @@ var Steppe = (function(Steppe) {
                                     index += 4;
                                 }
 
-                                index += framebufferImageData.width * 4 -
-                                    4 * _quality;
+                                index += (framebufferImageData.width << 2) -
+                                    (_quality << 2);
                             }
                         }
                     }
@@ -618,7 +621,6 @@ var Steppe = (function(Steppe) {
                 }
             }
 
-            framebufferImageData.data = framebufferData;
             _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
 
             _framebuffer.drawImage(_temporaryFramebuffer.canvas,
@@ -641,7 +643,8 @@ var Steppe = (function(Steppe) {
             angleOfRotation |= 0; 
 
             var skyWidth  = _sky.width;
-            var skyHeight = _CANVAS_HEIGHT / 2 - (_camera.y - _CANVAS_HEIGHT);
+            var skyHeight = (_CANVAS_HEIGHT >> 1) -
+                (_camera.y - _CANVAS_HEIGHT);
 
             if (skyHeight > _sky.height) {
                 skyHeight = _sky.height;
@@ -695,12 +698,29 @@ var Steppe = (function(Steppe) {
              * Add a 2D sprite, at the specified world coords, to the sprite
              * list.
              *
-             * @param {Image} image The 2D sprite as an image.
+             * @param {HTMLImageElement} image The 2D sprite as an image.
              * @param {number} x The x-coordinate in world space.
              * @param {number} z The z-coordinate in world space.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             addSprite: function(image, x, z) {
+                if ( !(image instanceof HTMLImageElement)) {
+                    throw('Invalid image: not an instance of HTMLImageElement');
+                }
+                if (typeof(x) != 'number') {
+                    throw('Invalid x: not a number');
+                }
+                if (typeof(z) != 'number') {
+                    throw('Invalid z: not a number');
+                }
+
+                if (x < 1024 || x >= 1024 + 1024) {
+                    throw('Invalid x: must be in the range 1024..2047');
+                }
+                if (z < 1024 || z >= 1024 + 1024) {
+                    throw('Invalid z: must be in the range 1024..2047');
+                }
+
                 var u = x & 1023;
                 var v = z & 1023;
 
@@ -721,7 +741,7 @@ var Steppe = (function(Steppe) {
              *                            Steppe capability; 'fog',
              *                            'reflection-map' and 'smooth' are
              *                            currently implemented.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             disable: function(capability) {
                 if (capability === 'fog') {
@@ -744,7 +764,7 @@ var Steppe = (function(Steppe) {
              *                            Steppe capability; 'fog',
              *                            'reflection-map' and 'smooth' are
              *                            currently implemented.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             enable: function(capability) {
                 if (capability === 'fog') {
@@ -764,8 +784,8 @@ var Steppe = (function(Steppe) {
              * Get the current camera.
              *
              * @return {object} An object composed of an angle-of-rotation (in
-             *                  'fake' degrees) about the y-axis and a 3D point
-             *                  in world space.
+             *                  degrees about the y-axis) and a 3D point in
+             *                  world space.
              */
             getCamera: function() {
                 return {
@@ -788,6 +808,20 @@ var Steppe = (function(Steppe) {
              *                  unit of terrain.
              */
             getHeight: function(x, z) {
+                if (typeof(x) != 'number') {
+                    throw('Invalid x: not a number');
+                }
+                if (typeof(z) != 'number') {
+                    throw('Invalid z: not a number');
+                }
+
+                if (x < 1024 || x >= 1024 + 1024) {
+                    throw('Invalid x: must be in the range 1024..2047');
+                }
+                if (z < 1024 || z >= 1024 + 1024) {
+                    throw('Invalid z: must be in the range 1024..2047');
+                }
+
                 var u = x & 1023;
                 var v = z & 1023;
 
@@ -820,139 +854,143 @@ var Steppe = (function(Steppe) {
              * sprites.
              */
             render: function() {
-                _renderSky();
-
                 // Fill the upper region of the framebuffer with the
                 // fog-colour.
                 _framebuffer.fillStyle = '#7f7f7f';
                 _framebuffer.fillRect(0, 100, 320, 25);
 
+                _renderSky();
+
                 // Empty the list of visible sprites.
                 _visibleSpriteList.length = 0;
 
-                // Calculate the unit vector of the camera.
-                var cameraVectorX = Math.cos(_camera.angle *
-                    _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
-                var cameraVectorZ = Math.sin(_camera.angle *
-                    _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
+                if (_spriteList.length > 0) {
+                    // Calculate the unit vector of the camera.
+                    var cameraVectorX = Math.cos(_camera.angle *
+                        _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
+                    var cameraVectorZ = Math.sin(_camera.angle *
+                        _ANGULAR_INCREMENT * _DEGREES_TO_RADIANS);
 
-                // For each sprite...
-                for (var i = 0; i < _spriteList.length; ++i) {
-                    var sprite = _spriteList[i];
+                    // For each sprite...
+                    for (var i = 0; i < _spriteList.length; ++i) {
+                        var sprite = _spriteList[i];
 
-                    // Calculate the vector of the sprite.
-                    var spriteVectorX = sprite.x - _camera.x,
-                        spriteVectorZ = sprite.z - _camera.z;
+                        // Calculate the vector of the sprite.
+                        var spriteVectorX = sprite.x - _camera.x,
+                            spriteVectorZ = sprite.z - _camera.z;
 
-                    // Calculate the magnitude (length of the vector) to
-                    // determine the distance from the camera to the sprite.
-                    var vectorLength = Math.sqrt(
-                        spriteVectorX * spriteVectorX +
-                        spriteVectorZ * spriteVectorZ);
+                        // Calculate the magnitude (length of the vector) to
+                        // determine the distance from the camera to the
+                        // sprite.
+                        var vectorLength = Math.sqrt(
+                            spriteVectorX * spriteVectorX +
+                            spriteVectorZ * spriteVectorZ);
 
-                    // If the distance from the camera to the sprite is outside
-                    // the viewing frustum...
-                    if (vectorLength > 400) {
-                        // Move to the next sprite.
-                        continue;
-                    }
-
-                    // Normalise the sprite vector to become the unit vector.
-                    spriteVectorX /= vectorLength;
-                    spriteVectorZ /= vectorLength;
-
-                    // Calculate the dot product of the camera and sprite
-                    // vectors.
-                    var dotProduct = cameraVectorX * spriteVectorX +
-                        cameraVectorZ * spriteVectorZ;
-
-                    // If the dot product is negative...
-                    if (dotProduct < 0) {
-                        // The sprite is behind the camera, so clearly not in
-                        // view. Move to the next sprite.
-                        continue;
-                    }
-
-                    // Calculate the angle (theta) between the camera vector
-                    // and the sprite vector.
-                    var theta = Math.acos(dotProduct);
-
-                    // If the angle (theta) is less than or equal to 30
-                    // degrees...
-                    // NOTE: We do NOT need to check the lower bound (-30
-                    // degrees) because theta will /never/ be negative.
-                    if (theta <= _THIRTY_DEGREE_ANGLE *
-                        _FAKE_DEGREES_TO_RADIANS) {
-                        var scale = _SCALE_FACTOR / (vectorLength + 1);
-
-                        // Scale the projected sprite.
-                        var width  = scale * sprite.image.width  | 0;
-                        var height = scale * sprite.image.height | 0;
-
-                        // Calculate the cross product. The cross product
-                        // differs from the dot product in a crucial way: the
-                        // result is *signed*!
-                        var crossProduct = cameraVectorX * spriteVectorZ -
-                            spriteVectorX * cameraVectorZ;
-
-                        // Calculate the projected x coord relative to the
-                        // horizontal centre of the canvas. We add or subtract
-                        // the value dependent on the sign of the cross
-                        // product.
-                        var x;
-                        if (crossProduct < 0) {
-                            x = _CANVAS_WIDTH / 2 - theta *
-                                _RADIANS_TO_FAKE_DEGREES | 0;
-                        } else {
-                            x = _CANVAS_WIDTH / 2 + theta *
-                                _RADIANS_TO_FAKE_DEGREES | 0;
+                        // If the distance from the camera to the sprite is
+                        // outside the viewing frustum...
+                        if (vectorLength > 400) {
+                            // Move to the next sprite.
+                            continue;
                         }
 
-                        // Calculate the 3D coords of the sprite.
-                        var spriteX = sprite.x,
-                            spriteY = _heightmap[((sprite.z & 1023) << 10) +
-                            (sprite.x & 1023)],
-                            spriteZ = sprite.z;
+                        // Normalise the sprite vector to become the unit
+                        // vector.
+                        spriteVectorX /= vectorLength;
+                        spriteVectorZ /= vectorLength;
 
-                        var row = _getRow(spriteX, spriteZ, x);
+                        // Calculate the dot product of the camera and sprite
+                        // vectors.
+                        var dotProduct = cameraVectorX * spriteVectorX +
+                            cameraVectorZ * spriteVectorZ;
 
-                        // Centre the scaled sprite.
-                        x -= width / 2;
-
-                        var rayX = spriteX,
-                            rayZ = spriteZ;
-
-                        var u = rayX & 1023,
-                            v = rayZ & 1023;
-
-                        var projectedHeight;
-                        if ((rayX < 1024 || rayX > 1024 + 1024 ||
-                            rayZ < 1024 || rayZ > 1024 + 1024) &&
-                            _outOfBoundsHeightmap.length > 0) {
-                            projectedHeight = _outOfBoundsHeightmap[
-                                (v << 10) + u];
-                        } else {
-                            projectedHeight = _heightmap[(v << 10) + u];
+                        // If the dot product is negative...
+                        if (dotProduct < 0) {
+                            // The sprite is behind the camera, so clearly not
+                            // in view. Move to the next sprite.
+                            continue;
                         }
 
-                        var projectedScale = projectedHeight * scale;
+                        // Calculate the angle (theta) between the camera vector
+                        // and the sprite vector.
+                        var theta = Math.acos(dotProduct);
 
-                        var top = _CANVAS_HEIGHT / 2 -
-                            (_camera.y - _CANVAS_HEIGHT) + row -
-                            projectedScale,
-                            bottom = top + projectedScale;
+                        // If the angle (theta) is less than or equal to 30
+                        // degrees...
+                        // NOTE: We do NOT need to check the lower bound (-30
+                        // degrees) because theta will /never/ be negative.
+                        if (theta <= _THIRTY_DEGREE_ANGLE *
+                            _FAKE_DEGREES_TO_RADIANS) {
+                            var scale = _SCALE_FACTOR / (vectorLength + 1);
 
-                        // Add the projected sprite to the list of visible
-                        // sprites.
-                        _visibleSpriteList.push({
-                            height:       height,
-                            image:        sprite.image,
-                            row:          bottom | 0,
-                            vectorLength: vectorLength,
-                            width:        width,
-                            x:            x | 0,
-                            y:            top - height | 0
-                        });
+                            // Scale the projected sprite.
+                            var width  = scale * sprite.image.width  | 0;
+                            var height = scale * sprite.image.height | 0;
+
+                            // Calculate the cross product. The cross product
+                            // differs from the dot product in a crucial way:
+                            // the result is *signed*!
+                            var crossProduct = cameraVectorX * spriteVectorZ -
+                                spriteVectorX * cameraVectorZ;
+
+                            // Calculate the projected x coord relative to the
+                            // horizontal centre of the canvas. We add or
+                            // subtract the value dependent on the sign of the
+                            // cross product.
+                            var x;
+                            if (crossProduct < 0) {
+                                x = _CANVAS_WIDTH / 2 - theta *
+                                    _RADIANS_TO_FAKE_DEGREES | 0;
+                            } else {
+                                x = _CANVAS_WIDTH / 2 + theta *
+                                    _RADIANS_TO_FAKE_DEGREES | 0;
+                            }
+
+                            // Calculate the 3D coords of the sprite.
+                            var spriteX = sprite.x,
+                                spriteY = _heightmap[((sprite.z & 1023) << 10) +
+                                    (sprite.x & 1023)],
+                                spriteZ = sprite.z;
+
+                            var row = _getRow(spriteX, spriteZ, x);
+
+                            // Centre the scaled sprite.
+                            x -= (width >> 1);
+
+                            var rayX = spriteX,
+                                rayZ = spriteZ;
+
+                            var u = rayX & 1023,
+                                v = rayZ & 1023;
+
+                            var projectedHeight;
+                            if ((rayX < 1024 || rayX >= 1024 + 1024 ||
+                                rayZ < 1024 || rayZ >= 1024 + 1024) &&
+                                _outOfBoundsHeightmap.length > 0) {
+                                projectedHeight = _outOfBoundsHeightmap[
+                                    (v << 10) + u];
+                            } else {
+                                projectedHeight = _heightmap[(v << 10) + u];
+                            }
+
+                            var projectedScale = projectedHeight * scale;
+
+                            var top = (_CANVAS_HEIGHT >> 1) -
+                                (_camera.y - _CANVAS_HEIGHT) + row -
+                                projectedScale,
+                                bottom = top + projectedScale;
+
+                            // Add the projected sprite to the list of visible
+                            // sprites.
+                            _visibleSpriteList.push({
+                                height:       height,
+                                image:        sprite.image,
+                                row:          bottom | 0,
+                                vectorLength: vectorLength,
+                                width:        width,
+                                x:            x | 0,
+                                y:            top - height | 0
+                            });
+                        }
                     }
                 }
 
@@ -963,6 +1001,10 @@ var Steppe = (function(Steppe) {
                 }
 
                 initialAngle |= 0;
+
+                // Clear the temporary framebuffer.
+/*                _temporaryFramebuffer.canvas.width =
+                    _temporaryFramebuffer.canvas.width;*/
 
 //                var date = new Date();
 //                var startTime = date.getTime();
@@ -987,7 +1029,7 @@ var Steppe = (function(Steppe) {
              *
              * @param {object} camera The object representing the current
              *                        camera.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setCamera: function(camera) {
                 if (typeof(camera) != 'object') {
@@ -1021,9 +1063,18 @@ var Steppe = (function(Steppe) {
              *
              * @param {array} heightmap The heightmap canvas as an array of
              *                          values in the range 0..255.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setHeightmap: function(heightmap) {
+                if ( !(heightmap instanceof Array)) {
+                    throw('Invalid heightmap: not an array');
+                }
+
+                if (heightmap.length != 1024 * 1024) {
+                    throw('Invalid heightmap: number of array elements ' +
+                        'incorrect');
+                }
+
                 _heightmap = heightmap;
 
                 return this;
@@ -1034,9 +1085,18 @@ var Steppe = (function(Steppe) {
              *
              * @param {array} outOfBoundsHeightmap The out-of-bounds heightmap
              *                                     canvas as an array.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setOutOfBoundsHeightmap: function(outOfBoundsHeightmap) {
+                if ( !(outOfBoundsHeightmap instanceof Array)) {
+                    throw('Invalid outOfBoundsHeightmap: not an array');
+                }
+
+                if (outOfBoundsHeightmap.length != 1024 * 1024) {
+                    throw('Invalid outOfBoundsHeightmap: number of array ' +
+                        'elements incorrect');
+                }
+
                 _outOfBoundsHeightmap = outOfBoundsHeightmap;
 
                 return this;
@@ -1047,7 +1107,7 @@ var Steppe = (function(Steppe) {
              *
              * @param {HTMLCanvasElement} outOfBoundsTexturemapCanvas The
              *                            out-of-bounds texturemap canvas.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setOutOfBoundsTexturemap: function(
                 outOfBoundsTexturemapCanvas) {
@@ -1080,7 +1140,7 @@ var Steppe = (function(Steppe) {
              * @param {string} quality Specifies a string indicating the
              *                         render quality from 'low', through
              *                         'medium', to 'high'.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setQuality: function(quality) {
                 if (quality === 'medium') {
@@ -1126,7 +1186,7 @@ var Steppe = (function(Steppe) {
              *
              * @param {HTMLCanvasElement} texturemapCanvas The texturemap
              *                                             canvas.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setTexturemap: function(texturemapCanvas) {
                 if ( !(texturemapCanvas instanceof HTMLCanvasElement)) {
@@ -1154,7 +1214,7 @@ var Steppe = (function(Steppe) {
              * @param {number} height Globally-defined height of the
              *                        reflection-mapped water. It must be
              *                        in the range 0..255.
-             * @return {Renderer} This (fluent interface).
+             * @return {Renderer} This (chainable).
              */
             setWaterHeight: function(height) {
                 if (_waterHeight == -1) {
