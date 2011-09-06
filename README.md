@@ -7,7 +7,7 @@ charge in your own projects.
 
 Steppe, like [Fleeting Fantasy](http://fleetingfantasy.com/), is actively under
 development so we recommend you wait until it's production-ready before using
-it for anything serious.
+it for anything serious. That doesn't mean you shouldn't play with it now, BTW.
 
 ### Screenshots ###
 
@@ -20,9 +20,10 @@ it for anything serious.
 * Four degrees of freedom (4DoF); translation along the x, y, and z axes and rotation about the y axis
 * Reflection-mapped, semi-transparent water with globally variable height
 * Full 360-degree panoramic sky
+* Floating horizon and faux camera tilt
 * Distance fog for better depth perception
 * Texture-mapped terrain with client-side compositor accepting multiple textures
-* Antialiasing for smoother rendering results
+* Antialiasing for smoother rendering results (currently unavailable)
 * Configurable render quality from low, through medium, to high
 * 2D billboarded sprites (JS only)
 * Alternative texturemap for out-of-bounds terrain
@@ -36,6 +37,6 @@ it for anything serious.
 * Sanitised API
 * Pre-calculated lightmap support for shadows
 
-### Fleeting Fantasy/Steppe Demo ###
+### Mars Demo ###
 
-[Demo](http://fleetingfantasy.com/demo)
+[Demo](http://steppe.fleetingfantasy.com/)

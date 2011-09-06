@@ -214,21 +214,24 @@ var Steppe = (function(Steppe) {
         /**
          * Initialise (or recalculate) the ray-length lookup table.
          *
-         * @param {number} y The position of the camera on the y-axis.
          * @param {number} distance The distance from the camera to the
          *                          projection plane.
          */
-        var _initRayLengthLookupTable = function(y, distance) {
-            for (var ray = 1; ray < _CANVAS_WIDTH; ++ray) {
-                for (var row = 0; row < _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2;
-                    ++row) {
-                    var invertedRow = _CANVAS_HEIGHT - 1 - row;
+        var _initRayLengthLookupTable = function(distance) {
+            for (var y = 200; y <= 300; ++y) {
+                _rayLengthLookupTable[y] = [];
 
-                    var rayLength = _inverseDistortionLookupTable[ray] *
-                        ((distance * y) / (y - invertedRow));
+                for (var ray = 1; ray < _CANVAS_WIDTH; ++ray) {
+                    for (var row = 0; row < _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2;
+                        ++row) {
+                        var invertedRow = _CANVAS_HEIGHT - 1 - row;
 
-                    _rayLengthLookupTable[row * _CANVAS_WIDTH + ray] =
-                        rayLength;
+                        var rayLength = _inverseDistortionLookupTable[ray] *
+                            ((distance * y) / (y - invertedRow));
+
+                        _rayLengthLookupTable[y][row * _CANVAS_WIDTH + ray] =
+                            rayLength;
+                    }
                 }
             }
         };
@@ -282,7 +285,7 @@ var Steppe = (function(Steppe) {
 
             for (var row = 0; row <= maximumRow; ++row) {
                 for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                    var rayLength = _rayLengthLookupTable[
+                    var rayLength = _rayLengthLookupTable[_camera.y][
                         (row << 8) + (row << 6) + ray];
 
                     var rayX = _camera.x + rayLength *
@@ -480,8 +483,8 @@ var Steppe = (function(Steppe) {
 
                 for (var row = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
                     row >= 0; --row) {
-                    var rayLength = _rayLengthLookupTable[(row << 8) +
-                        (row << 6) + ray];
+                    var rayLength = _rayLengthLookupTable[_camera.y][
+                        (row << 8) + (row << 6) + ray];
 
                     var rayX = _camera.x + rayLength *
                         _cosineLookupTable[currentAngle] | 0,
@@ -691,7 +694,7 @@ var Steppe = (function(Steppe) {
 
         _initSineAndCosineLookupTables();
         _initInverseDistortionLookupTable();
-        _initRayLengthLookupTable(_CAMERA_Y, _DISTANCE);
+        _initRayLengthLookupTable(_DISTANCE);
 
         return {
             /**
@@ -1044,13 +1047,9 @@ var Steppe = (function(Steppe) {
                 _camera.x = (camera.x !== undefined &&
                     typeof(camera.x) == 'number') ?
                     (~~(camera.x + 0.5)) : (_camera.x);
-
-                if (camera.y !== undefined &&
-                    typeof(camera.y) == 'number') {
-                    _camera.y = ~~(camera.y + 0.5);
-                    _initRayLengthLookupTable(_camera.y, _DISTANCE);
-                }
-
+                _camera.y = (camera.y !== undefined &&
+                    typeof(camera.y) == 'number') ?
+                    (~~(camera.y + 0.5)) : (_camera.y);
                 _camera.z = (camera.z !== undefined &&
                     typeof(camera.z) == 'number') ?
                     (~~(camera.z + 0.5)) : (_camera.z);
