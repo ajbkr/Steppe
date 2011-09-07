@@ -3,11 +3,12 @@ Steppe
 
 Steppe is a custom HTML5 canvas 2.5D landscape renderer and compositor. The
 JavaScript source code for Steppe is unobfuscated and can be used free of
-charge in your own projects.
+charge in your own projects (MIT license).
 
 Steppe, like [Fleeting Fantasy](http://fleetingfantasy.com/), is actively under
 development so we recommend you wait until it's production-ready before using
-it for anything serious. That doesn't mean you shouldn't play with it now, BTW.
+it for anything serious. That doesn't mean you shouldn't play with it now
+though; go right ahead!
 
 ### Screenshots ###
 
@@ -28,6 +29,7 @@ it for anything serious. That doesn't mean you shouldn't play with it now, BTW.
 * 2D billboarded sprites (JS only)
 * Alternative texturemap for out-of-bounds terrain
 * PHP port for graceful degradation where HTML5 canvas isn't supported
+* MIT license
 * All HTML5 2D canvas; no WebGL!
 
 ### Coming Soon ###
@@ -37,6 +39,6 @@ it for anything serious. That doesn't mean you shouldn't play with it now, BTW.
 * Sanitised API
 * Pre-calculated lightmap support for shadows
 
-### Mars Demo ###
+### Steppe Mars Demo ###
 
-[Demo](http://steppe.fleetingfantasy.com/)
+[Try Demo](http://steppe.fleetingfantasy.com/)
