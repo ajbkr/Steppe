@@ -22,7 +22,7 @@ though; go right ahead!
 * Reflection-mapped, semi-transparent water with globally variable height
 * Full 360-degree panoramic sky
 * Floating horizon and faux camera tilt
-* Distance fog for better depth perception
+* Coloured, distance fog for better depth perception
 * Texture-mapped terrain with client-side compositor accepting multiple textures
 * Antialiasing for smoother rendering results (currently unavailable)
 * Configurable render quality from low, through medium, to high

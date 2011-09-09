@@ -32,6 +32,7 @@ var Steppe = (function(Steppe) {
 
         var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 },
             _cosineLookupTable = [],
+            _fogColor = 0x7f7f7fff;
             _framebuffer = undefined,
             _heightmap = [],
             _inverseDistortionLookupTable = [],
@@ -344,7 +345,7 @@ var Steppe = (function(Steppe) {
                     }
 
                     if (_fog) {
-                        var foggedTexel = _alphaBlend(texel, 0x7f7f7fff,
+                        var foggedTexel = _alphaBlend(texel, _fogColor,
                             row / 100 * 255 | 0);
 
                         color = foggedTexel;
@@ -548,7 +549,7 @@ var Steppe = (function(Steppe) {
 
                         if (_fog) {
                             var foggedTexel = _alphaBlend(texel,
-                                0x7f7f7fff, row / 100 * 255 | 0);
+                                _fogColor, row / 100 * 255 | 0);
 
                             color = foggedTexel;
                         }
@@ -670,6 +671,25 @@ var Steppe = (function(Steppe) {
                     320 - (skyWidth - angleOfRotation),
                     skyHeight, skyWidth - angleOfRotation, 0,
                     320 - (skyWidth - angleOfRotation), skyHeight);
+            }
+
+            if (_fog) {
+                var skyContext = _sky.getContext('2d');
+
+                var skyGradient = skyContext.createLinearGradient(0, 0, 0,
+                    skyHeight - 1);
+                skyGradient.addColorStop(0, 'rgba(' +
+                    ((_fogColor >> 24) & 0xff) + ', ' +
+                    ((_fogColor >> 16) & 0xff) + ', ' +
+                    ((_fogColor >>  8) & 0xff) + ', ' +
+                    (1 - (1 / (100 / skyHeight))) + ')');
+                skyGradient.addColorStop(1, 'rgba(' +
+                    ((_fogColor >> 24) & 0xff) + ', ' +
+                    ((_fogColor >> 16) & 0xff) + ', ' +
+                    ((_fogColor >>  8) & 0xff) + ', 1)');
+
+                _framebuffer.fillStyle = skyGradient;
+                _framebuffer.fillRect(0, 0, 320, skyHeight);
             }
         };
 
@@ -1053,6 +1073,36 @@ var Steppe = (function(Steppe) {
                 _camera.z = (camera.z !== undefined &&
                     typeof(camera.z) == 'number') ?
                     (~~(camera.z + 0.5)) : (_camera.z);
+
+                return this;
+            },
+
+            /**
+             * ...
+             *
+             * @param {string} cssColor ...
+             * @return {Renderer} This (chainable).
+             */
+            setFogColor: function(cssColor) {
+                if ( !_fog) {
+                    throw('Capability not enabled');
+                }
+
+                var re = /#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/;
+                var matches = re.exec(cssColor);
+
+                if (matches.length != 4) {
+                    throw('Invalid cssColor: must be in fully-qualified ' +
+                        'hexadecimal CSS format (#rrggbb)');
+                }
+
+                var red   = matches[1],
+                    green = matches[2],
+                    blue  = matches[3];
+
+                _fogColor = ((parseInt(red,   16) << 24) |
+                             (parseInt(green, 16) << 16) |
+                             (parseInt(blue,  16) <<  8) | 0xff);
 
                 return this;
             },
