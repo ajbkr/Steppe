@@ -22,7 +22,7 @@ var Steppe = (function(Steppe) {
             _RADIANS_TO_FAKE_DEGREES = ((360 / _ANGLE_OF_VIEW) *
                 _CANVAS_WIDTH) / (2 * Math.PI),
             _SCALE_FACTOR = 35,
-            _CAMERA_Y     = 175,
+            _CAMERA_Y     = 200,
             _DISTANCE     = 75,
             _MAXIMUM_ROW  = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1,
             _WATER_HEIGHT = 64;
@@ -33,19 +33,19 @@ var Steppe = (function(Steppe) {
 
         var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 },
             _cosineLookupTable = [],
-            _fogColor = 0x7f7f7fff;
-            _framebuffer = undefined,
+            _fogColor = 0x7f7f7fff,
+            _framebuffer,
             _heightmap = [],
             _inverseDistortionLookupTable = [],
             _outOfBoundsHeightmap = [],
-            _outOfBoundsTexturemap = undefined,
+            _outOfBoundsTexturemap,
             _rayLengthLookupTable = [],
             _sineLookupTable = [],
-            _sky = undefined,
-            _skyData = undefined,
+            _sky,
+            _skyData,
             _spriteList = [],
-            _temporaryFramebuffer = undefined,
-            _texturemap = undefined,
+            _temporaryFramebuffer,
+            _texturemap,
             _visibleSpriteList = [];
 
         var _fog = false,		// disabled (default)
@@ -207,7 +207,7 @@ var Steppe = (function(Steppe) {
                     Math.cos(angleOfRotationInRadians);
 
                 var cosine = Math.cos(angleOfRotationInRadians);
-                if (cosine != 0) {
+                if (cosine !== 0) {
                     _inverseDistortionLookupTable[
                         _THIRTY_DEGREE_ANGLE - angleOfRotation] = 1 / cosine;
                 }
@@ -316,9 +316,10 @@ var Steppe = (function(Steppe) {
 
                     var color = 0x000000ff;
 
+                    var texel;
                     if (rayX < 1024 || rayX >= 1024 + 1024 ||
                         rayZ < 1024 || rayZ >= 1024 + 1024) {
-                        var texel =
+                        texel =
                             _getPixelFromOutOfBoundsTexturemap(u, v);
 
                         color = texel;
@@ -326,7 +327,7 @@ var Steppe = (function(Steppe) {
                         if (height < _waterHeight) {
                             var data = _getPixelFromSky(ray, 200 - top);
 
-                            var texel =
+                            texel =
                                 _getPixelFromTexturemap(u, v);
 
                             var mixedColor = _alphaBlend(data, texel,
@@ -339,7 +340,7 @@ var Steppe = (function(Steppe) {
 
                             color = texel;
                         } else {
-                            var texel =
+                            texel =
                                 _getPixelFromTexturemap(u, v);
 
                             color = texel;
@@ -358,14 +359,15 @@ var Steppe = (function(Steppe) {
                         bottom = 199;
                     }
 
+                    var index, j, i;
                     if (ray > _quality) {
                         // Not the left-most ray...
-                        var index =
+                        index =
                             (top * (framebufferImageData.width << 2)) +
                             (ray << 2);
 
-                        for (var j = 0; j < bottom - top + 1; ++j) {
-                            for (var i = 0; i < _quality; ++i) {
+                        for (j = 0; j < bottom - top + 1; ++j) {
+                            for (i = 0; i < _quality; ++i) {
                                 framebufferData[index]     =
                                     (color >> 24) & 0xff;
                                 framebufferData[index + 1] =
@@ -382,12 +384,12 @@ var Steppe = (function(Steppe) {
                         }
                     } else {
                         // Left-most ray: we don't cast rays for column 0!
-                        var index =
+                        index =
                             (top * (framebufferImageData.width << 2)) +
                             (ray << 2);
 
-                        for (var j = 0; j < bottom - top + 1; ++j) {
-                            for (var i = 0; i < _quality; ++i) {
+                        for (j = 0; j < bottom - top + 1; ++j) {
+                            for (i = 0; i < _quality; ++i) {
                                 framebufferData[index - (_quality << 2)]     =
                                     (color >> 24) & 0xff;
                                 framebufferData[index - (_quality << 2) + 1] =
@@ -425,14 +427,14 @@ var Steppe = (function(Steppe) {
                 var spritesDrawn = false;
 
                 // For each visible sprite...
-                for (var i = 0; i < _visibleSpriteList.length; ++i) {
+                for (var k = 0; k < _visibleSpriteList.length; ++k) {
                     // If the current sprite has been removed...
-                    if (_visibleSpriteList[i] === undefined) {
+                    if (_visibleSpriteList[k] === undefined) {
                         // Move to the next sprite.
                         continue;
                     }
 
-                    var sprite = _visibleSpriteList[i];
+                    var sprite = _visibleSpriteList[k];
 
                     // If the current row matches the base of the sprite...
                     if (row == sprite.row) {
@@ -445,7 +447,7 @@ var Steppe = (function(Steppe) {
                             sprite.height);
 
                         // Remove the sprite from the list of visible sprites.
-                        _visibleSpriteList[i] = undefined;
+                        _visibleSpriteList[k] = undefined;
 
                         spritesDrawn = true;
                     }
@@ -517,9 +519,10 @@ var Steppe = (function(Steppe) {
 
                         var color = 0x000000ff;
 
+                        var texel;
                         if (rayX < 1024 || rayX >= 1024 + 1024 ||
                             rayZ < 1024 || rayZ >= 1024 + 1024) {
-                            var texel =
+                            texel =
                                 _getPixelFromOutOfBoundsTexturemap(u, v);
 
                             color = texel;
@@ -528,7 +531,7 @@ var Steppe = (function(Steppe) {
                                 var data = _getPixelFromSky(ray,
                                     200 - top);
 
-                                var texel =
+                                texel =
                                     _getPixelFromTexturemap(u, v);
 
                                 var mixedColor = _alphaBlend(data,
@@ -541,7 +544,7 @@ var Steppe = (function(Steppe) {
 
                                 color = texel;
                             } else {
-                                var texel =
+                                texel =
                                     _getPixelFromTexturemap(u, v);
 
                                 color = texel;
@@ -559,14 +562,15 @@ var Steppe = (function(Steppe) {
                             bottom = 199;
                         }
 
+                        var index, i, j;
                         if (ray > _quality) {
                             // Not the left-most ray...
-                            var index =
+                            index =
                                 (top * (framebufferImageData.width << 2)) +
                                 (ray << 2);
 
-                            for (var j = 0; j < bottom - top + 1; ++j) {
-                                for (var i = 0; i < _quality; ++i) {
+                            for (j = 0; j < bottom - top + 1; ++j) {
+                                for (i = 0; i < _quality; ++i) {
                                     framebufferData[index]     =
                                         (color >> 24) & 0xff;
                                     framebufferData[index + 1] =
@@ -583,12 +587,12 @@ var Steppe = (function(Steppe) {
                             }
                         } else {
                             // Left-most ray: we don't cast rays for column 0!
-                            var index =
+                            index =
                                 (top * (framebufferImageData.width << 2)) +
                                 (ray << 2);
 
-                            for (var j = 0; j < bottom - top + 1; ++j) {
-                                for (var i = 0; i < _quality; ++i) {
+                            for (j = 0; j < bottom - top + 1; ++j) {
+                                for (i = 0; i < _quality; ++i) {
                                     framebufferData[index -
                                         (_quality << 2)]     =
                                         (color >> 24) & 0xff;
