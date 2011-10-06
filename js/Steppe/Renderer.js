@@ -24,6 +24,7 @@ var Steppe = (function(Steppe) {
             _SCALE_FACTOR = 35,
             _CAMERA_Y     = 175,
             _DISTANCE     = 75,
+            _MAXIMUM_ROW  = _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2 - 1,
             _WATER_HEIGHT = 64;
 
         var _FASTEST   = 4,
@@ -41,6 +42,7 @@ var Steppe = (function(Steppe) {
             _rayLengthLookupTable = [],
             _sineLookupTable = [],
             _sky = undefined,
+            _skyData = undefined,
             _spriteList = [],
             _temporaryFramebuffer = undefined,
             _texturemap = undefined,
@@ -71,7 +73,7 @@ var Steppe = (function(Steppe) {
 
             var mixedRed   = ((firstColor >> 24) & 0xff) * normalisedAlpha | 0,
                 mixedGreen = ((firstColor >> 16) & 0xff) * normalisedAlpha | 0,
-                mixedBlue  = ((firstColor >> 8)  & 0xff) * normalisedAlpha | 0;
+                mixedBlue  = ((firstColor >>  8) & 0xff) * normalisedAlpha | 0;
 
             mixedRed   += Math.floor(((secondColor >> 24) & 0xff) *
                 adjustedAlpha);
@@ -99,9 +101,9 @@ var Steppe = (function(Steppe) {
             if (_outOfBoundsTexturemap !== undefined) {
                 var index = (y << 12) + (x << 2);
 
-                return (_outOfBoundsTexturemap[index] << 24) |
+                return (_outOfBoundsTexturemap[index] << 24)  |
                     (_outOfBoundsTexturemap[index + 1] << 16) |
-                    (_outOfBoundsTexturemap[index + 2] << 8) | 0xff;
+                    (_outOfBoundsTexturemap[index + 2] <<  8) | 0xff;
             } else {
                 return 0x7f7f7fff;
             }
@@ -130,12 +132,11 @@ var Steppe = (function(Steppe) {
                 y = 100 - 1;
             }
 
-            var data = _sky.getContext('2d').getImageData(
-                (currentAngle + x | 0) % 1920, y, 1, 1).data;
+            var index = (y * 1920 + (currentAngle + x | 0) % 1920) * 4;
 
-            return (data[0] << 24) |
-                (data[1] << 16) |
-                (data[2] << 8)  | 0xff;
+            return (_skyData[index] << 24)  |
+                (_skyData[index + 1] << 16) |
+                (_skyData[index + 2] <<  8) | 0xff;
         };
 
         /**
@@ -149,11 +150,15 @@ var Steppe = (function(Steppe) {
          *                  corresponding pixel.
          */
         var _getPixelFromTexturemap = function(x, y) {
-            var index = (y << 12) + (x << 2);
+            if (_outOfBoundsTexturemap !== undefined) {
+                var index = (y << 12) + (x << 2);
 
-            return (_texturemap[index] << 24) |
-                (_texturemap[index + 1] << 16) |
-                (_texturemap[index + 2] << 8) | 0xff;
+                return (_texturemap[index] << 24)  |
+                    (_texturemap[index + 1] << 16) |
+                    (_texturemap[index + 2] <<  8) | 0xff;
+            } else {
+                return 0xffffffff;
+            }
         };
 
         /**
@@ -223,8 +228,7 @@ var Steppe = (function(Steppe) {
                 _rayLengthLookupTable[y] = [];
 
                 for (var ray = 1; ray < _CANVAS_WIDTH; ++ray) {
-                    for (var row = 0; row < _CANVAS_HEIGHT + _CANVAS_HEIGHT / 2;
-                        ++row) {
+                    for (var row = 0; row <= _MAXIMUM_ROW; ++row) {
                         var invertedRow = _CANVAS_HEIGHT - 1 - row;
 
                         var rayLength = _inverseDistortionLookupTable[ray] *
@@ -282,9 +286,7 @@ var Steppe = (function(Steppe) {
                 320, 200);
             var framebufferData      = framebufferImageData.data;
 
-            var maximumRow = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
-
-            for (var row = 0; row <= maximumRow; ++row) {
+            for (var row = 0; row <= _MAXIMUM_ROW; ++row) {
                 for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
                     var rayLength = _rayLengthLookupTable[_camera.y][
                         (row << 8) + (row << 6) + ray];
@@ -480,10 +482,9 @@ var Steppe = (function(Steppe) {
             var framebufferData      = framebufferImageData.data;
 
             for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                var previousTop = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
+                var previousTop = _MAXIMUM_ROW;
 
-                for (var row = _CANVAS_HEIGHT + (_CANVAS_HEIGHT >> 1) - 1;
-                    row >= 0; --row) {
+                for (var row = _MAXIMUM_ROW; row >= 0; --row) {
                     var rayLength = _rayLengthLookupTable[_camera.y][
                         (row << 8) + (row << 6) + ray];
 
@@ -1025,10 +1026,6 @@ var Steppe = (function(Steppe) {
 
                 initialAngle |= 0;
 
-                // Clear the temporary framebuffer.
-/*                _temporaryFramebuffer.canvas.width =
-                    _temporaryFramebuffer.canvas.width;*/
-
 //                var date = new Date();
 //                var startTime = date.getTime();
 
@@ -1059,19 +1056,16 @@ var Steppe = (function(Steppe) {
                     throw('Invalid camera: not an object');
                 }
 
-                _camera.angle = (camera.angle !== undefined &&
-                    typeof(camera.angle) == 'number') ?
+                _camera.angle = (typeof camera.angle === 'number') ?
                     (Math.abs(~~(camera.angle + 0.5)) % 360 /
-                    _ANGLE_OF_VIEW * 320) :
-                    (_camera.angle);
-                _camera.x = (camera.x !== undefined &&
-                    typeof(camera.x) == 'number') ?
+                    _ANGLE_OF_VIEW * 320) : (_camera.angle);
+                _camera.x = (typeof camera.x === 'number') ?
                     (~~(camera.x + 0.5)) : (_camera.x);
-                _camera.y = (camera.y !== undefined &&
-                    typeof(camera.y) == 'number') ?
-                    (~~(camera.y + 0.5)) : (_camera.y);
-                _camera.z = (camera.z !== undefined &&
-                    typeof(camera.z) == 'number') ?
+                if (typeof camera.y === 'number' && camera.y >= 200 &&
+                    camera.y <= 300) {
+                    _camera.y = ~~(camera.y + 0.5);
+                }
+                _camera.z = (typeof camera.z === 'number') ?
                     (~~(camera.z + 0.5)) : (_camera.z);
 
                 return this;
@@ -1211,6 +1205,7 @@ var Steppe = (function(Steppe) {
              *
              * @param {HTMLCanvasElement} skyCanvas The sky canvas; must be
              *                                      1920x100.
+             * @return {Renderer} This (chainable).
              */
             setSky: function(skyCanvas) {
                 if ( !(skyCanvas instanceof HTMLCanvasElement)) {
@@ -1226,6 +1221,8 @@ var Steppe = (function(Steppe) {
                 }
 
                 _sky = skyCanvas;
+                _skyData = skyCanvas.getContext('2d').getImageData(0, 0,
+                    skyCanvas.width, skyCanvas.height).data;
 
                 return this;
             },
