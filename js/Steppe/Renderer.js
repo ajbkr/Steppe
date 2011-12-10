@@ -260,217 +260,6 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * Render the terrain (landscape) with sprites.
-         *
-         * @param {number} initialAngle ...
-         */
-        var _renderBackToFront = function(initialAngle) {
-            /*
-             * 1. Construct a list of visible sprites; sprites are visible
-             *    where they fall within the -30..30 (60-degree) horizontal
-             *    field-of-view based on the direction that the camera is
-             *    pointing in.
-             * 2. For each visible sprite, determine its projected 2D coords
-             *    (x and y) and its scaled width and height based on distance
-             *    from the camera. The y coord corresponds to the bottom of the
-             *    sprite and the x coord is the centre of the width of the
-             *    sprite.
-             * 3. After drawing each row of terrain, draw any sprites where the
-             *    sprite's 'projected' row equals the current row. Remove the
-             *    sprite from the list of visible sprites.
-             * 4. Rinse and repeat.
-             */
-
-            var currentAngle = initialAngle;
-
-            var framebufferImageData = _temporaryFramebuffer.createImageData(
-                320, 200);
-            var framebufferData      = framebufferImageData.data;
-
-            for (var row = 0; row <= _MAXIMUM_ROW; ++row) {
-                for (var ray = _quality; ray < _CANVAS_WIDTH; ray += _quality) {
-                    var rayLength = _rayLengthLookupTable[_camera.y][
-                        (row << 8) + (row << 6) + ray];
-
-                    var rayX = _camera.x + rayLength *
-                        _cosineLookupTable[currentAngle] | 0,
-                        rayZ = _camera.z + rayLength *
-                        _sineLookupTable[currentAngle]   | 0;
-
-                    var u = rayX & 1023,
-                        v = rayZ & 1023;
-
-                    var height;
-                    if ((rayX < 1024 || rayX >= 1024 + 1024 ||
-                        rayZ < 1024 || rayZ >= 1024 + 1024) &&
-                        _outOfBoundsHeightmap.length > 0) {
-                        height = _outOfBoundsHeightmap[(v << 10) + u];
-                    } else {
-                        height = _heightmap[(v << 10) + u];
-                    }
-
-                    var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
-
-                    var top    = (_CANVAS_HEIGHT >> 1) -
-                        (_camera.y - _CANVAS_HEIGHT) + row - scale,
-                        bottom = top + scale;
-
-                    var color = 0x000000ff;
-
-                    var texel;
-                    if (rayX < 1024 || rayX >= 1024 + 1024 ||
-                        rayZ < 1024 || rayZ >= 1024 + 1024) {
-                        texel =
-                            _getPixelFromOutOfBoundsTexturemap(u, v);
-
-                        color = texel;
-                    } else {
-                        if (height < _waterHeight) {
-                            var data = _getPixelFromSky(ray, 200 - top);
-
-                            texel =
-                                _getPixelFromTexturemap(u, v);
-
-                            var mixedColor = _alphaBlend(data, texel,
-                                (_waterHeight - height) /
-                                _waterHeight * 255 * 2 | 0);
-
-                            texel = mixedColor;
-
-                            height = _waterHeight;
-
-                            color = texel;
-                        } else {
-                            texel =
-                                _getPixelFromTexturemap(u, v);
-
-                            color = texel;
-                        }
-                    }
-
-                    if (_fog) {
-                        var foggedTexel = _alphaBlend(texel, _fogColor,
-                            row / 100 * 255 | 0);
-
-                        color = foggedTexel;
-                    }
-
-                    // Render sliver...
-                    if (bottom > 199) {
-                        bottom = 199;
-                    }
-
-                    var index, i, j;
-                    if (ray > _quality) {
-                        // Not the left-most ray...
-                        index =
-                            (top * (framebufferImageData.width << 2)) +
-                            (ray << 2);
-
-                        var red   = (color >> 24) & 0xff,
-                            green = (color >> 16) & 0xff,
-                            blue  = (color >>  8) & 0xff;
-
-                        for (j = 0; j < bottom - top + 1; ++j) {
-                            for (i = 0; i < _quality; ++i) {
-                                framebufferData[index]   = red;
-                                framebufferData[++index] = green;
-                                framebufferData[++index] = blue;
-                                framebufferData[++index] = 0xff;
-                            }
-
-                            index += (framebufferImageData.width << 2) -
-                                (_quality << 2);
-                        }
-                    } else {
-                        // Left-most ray: we don't cast rays for column 0!
-                        index =
-                            (top * (framebufferImageData.width << 2)) +
-                            (ray << 2);
-
-                        red   = (color >> 24) & 0xff;
-                        green = (color >> 16) & 0xff;
-                        blue  = (color >>  8) & 0xff;
-
-                        for (j = 0; j < bottom - top + 1; ++j) {
-                            for (i = 0; i < _quality; ++i) {
-                                framebufferData[index - (_quality << 2)]     =
-                                    red;
-                                framebufferData[index - (_quality << 2) + 1] =
-                                    green;
-                                framebufferData[index - (_quality << 2) + 2] =
-                                    blue;
-                                framebufferData[index - (_quality << 2) + 3] =
-                                    0xff;
-
-                                framebufferData[index]   = red;
-                                framebufferData[++index] = green;
-                                framebufferData[++index] = blue;
-                                framebufferData[++index] = 0xff;
-                            }
-
-                            index += (framebufferImageData.width << 2) -
-                                (_quality << 2);
-                        }
-                    }
-
-                    currentAngle += _quality;
-                    if (currentAngle >=
-                        _THREE_HUNDRED_AND_SIXTY_DEGREE_ANGLE) {
-                        currentAngle = 0;
-                    }
-                }
-
-                _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
-
-                var spritesDrawn = false;
-
-                // For each visible sprite...
-                for (var k = 0; k < _visibleSpriteList.length; ++k) {
-                    // If the current sprite has been removed...
-                    if (typeof _visibleSpriteList[k] === 'undefined') {
-                        // Move to the next sprite.
-                        continue;
-                    }
-
-                    var sprite = _visibleSpriteList[k];
-
-                    // If the current row matches the base of the sprite...
-                    if (row == sprite.row) {
-                        // Draw the sprite.
-                        _temporaryFramebuffer.drawImage(
-                            sprite.image,
-                            sprite.x,
-                            sprite.y - _smooth,
-                            sprite.width,
-                            sprite.height);
-
-                        // Remove the sprite from the list of visible sprites.
-                        delete _visibleSpriteList[k];
-
-                        spritesDrawn = true;
-                    }
-                }
-
-                if (spritesDrawn) {
-                    framebufferImageData = _temporaryFramebuffer.getImageData(
-                        0, 0, 320, 200);
-                    framebufferData = framebufferImageData.data;
-                }
-
-                // Reset the current angle to -30 degrees of centre.
-                currentAngle = initialAngle;
-            }
-
-            _temporaryFramebuffer.putImageData(framebufferImageData, 0, 0);
-
-            _framebuffer.drawImage(_temporaryFramebuffer.canvas,
-                0, 0 - _smooth,
-                _temporaryFramebuffer.canvas.width,
-                _temporaryFramebuffer.canvas.height);
-        };
-
-        /**
          * Render the terrain (landscape).
          *
          * @param {number} initialAngle ...
@@ -609,8 +398,6 @@ var Steppe = (function(Steppe) {
                                     framebufferData[index++] = green;
                                     framebufferData[index++] = blue;
                                     framebufferData[index++] = 0xff;
-
-//                                    index += 4;
                                 }
 
                                 index += (framebufferImageData.width << 2) -
@@ -722,7 +509,7 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * ...
+         * Sort the list of currently visible sprites.
          */
         var _sortVisibleSpriteList = function() {
             var length = _visibleSpriteList.length;
@@ -1068,9 +855,9 @@ var Steppe = (function(Steppe) {
                 }
 
                 _sortVisibleSpriteList();
-/*                for (var k = 0; k < _visibleSpriteList.length; ++k) {
-                    console.log(_visibleSpriteList[k].vectorLength);
-                }*/
+//                for (var k = 0; k < _visibleSpriteList.length; ++k) {
+//                    console.log(_visibleSpriteList[k].vectorLength);
+//                }
 
                 var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
 
@@ -1083,16 +870,28 @@ var Steppe = (function(Steppe) {
 //                var date = new Date();
 //                var startTime = date.getTime();
 
+                /*
+                 * 1. Construct a list of visible sprites; sprites are visible
+                 *    where they fall within the -30..30 (60-degree) horizontal
+                 *    field-of-view based on the direction that the camera is
+                 *    pointing in.
+                 * 2. For each visible sprite, determine its projected 2D
+                 *    coords (x and y) and its scaled width and height based on
+                 *    distance from the camera. The y coord corresponds to the
+                 *    bottom of the sprite and the x coord is the centre of the
+                 *    width of the sprite.
+                 * 3. After drawing each row of terrain, draw any sprites where
+                 *    the sprite's 'projected' row equals the current row.
+                 *    Remove the sprite from the list of visible sprites.
+                 * 4. Rinse and repeat.
+                 */
+
+                // Render the terrain front-to-back.
+                _renderFrontToBack(initialAngle);
+
                 // If there are sprites in view...
                 if (_visibleSpriteList.length > 0) {
-                    // Render the terrain /with/ sprites back-to-front.
-//                    _renderBackToFront(initialAngle);
-                    _renderFrontToBack(initialAngle);
                     _renderSprites();
-                } else {
-                    // Render the terrain front-to-back. NOTE: This method is
-                    // considerably faster!
-                    _renderFrontToBack(initialAngle);
                 }
 
 //                var date2 = new Date();
