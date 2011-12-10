@@ -34,7 +34,6 @@ though; go right ahead!
 
 ### Coming Soon ###
 
-* 2D billboarded sprites (PHP)
 * Fog applied to sprites
 * Sanitised API
 * Pre-calculated lightmap support for shadows
