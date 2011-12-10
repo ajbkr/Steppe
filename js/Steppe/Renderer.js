@@ -7,7 +7,7 @@
 /** @namespace Steppe */
 var Steppe = (function(Steppe) {
     /** @class */
-    Steppe.Renderer = function(canvas, undefined) {
+    Steppe.Renderer = function(canvas) {
         var _CANVAS_WIDTH        = 320,	// 320 pixels
             _CANVAS_HEIGHT       = 200,	// 200 pixels
             _ANGLE_OF_VIEW       = 60,	// 60 degrees
@@ -99,7 +99,7 @@ var Steppe = (function(Steppe) {
          *                  corresponding pixel.
          */
         var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
-            if (_outOfBoundsTexturemap !== undefined) {
+            if (typeof _outOfBoundsTexturemap !== 'undefined') {
                 var index = (y << 12) + (x << 2);
 
                 return (_outOfBoundsTexturemap[index] << 24)  |
@@ -151,7 +151,7 @@ var Steppe = (function(Steppe) {
          *                  corresponding pixel.
          */
         var _getPixelFromTexturemap = function(x, y) {
-            if (_outOfBoundsTexturemap !== undefined) {
+            if (typeof _outOfBoundsTexturemap !== 'undefined') {
                 var index = (y << 12) + (x << 2);
 
                 return (_texturemap[index] << 24)  |
@@ -428,7 +428,7 @@ var Steppe = (function(Steppe) {
                 // For each visible sprite...
                 for (var k = 0; k < _visibleSpriteList.length; ++k) {
                     // If the current sprite has been removed...
-                    if (_visibleSpriteList[k] === undefined) {
+                    if (typeof _visibleSpriteList[k] === 'undefined') {
                         // Move to the next sprite.
                         continue;
                     }
@@ -446,7 +446,7 @@ var Steppe = (function(Steppe) {
                             sprite.height);
 
                         // Remove the sprite from the list of visible sprites.
-                        _visibleSpriteList[k] = undefined;
+                        delete _visibleSpriteList[k];
 
                         spritesDrawn = true;
                     }
@@ -701,7 +701,7 @@ var Steppe = (function(Steppe) {
             // For each visible sprite...
             for (var i = 0; i < _visibleSpriteList.length; ++i) {
                 // If the current sprite has been removed...
-                if (_visibleSpriteList[i] === undefined) {
+                if (typeof _visibleSpriteList[i] === 'undefined') {
                     // Move to the next sprite.
                     continue;
                 }
@@ -717,7 +717,7 @@ var Steppe = (function(Steppe) {
                     sprite.height);
 
                 // Remove the sprite from the list of visible sprites.
-                _visibleSpriteList[i] = undefined;
+                delete _visibleSpriteList[i];
             }
         };
 
@@ -1128,7 +1128,7 @@ var Steppe = (function(Steppe) {
             },
 
             /**
-             * ...
+             * Set the fog colour.
              *
              * @param {string} cssColor ...
              * @return {Renderer} This (chainable).
