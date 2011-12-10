@@ -217,7 +217,7 @@ ul.inheritsList
 				
 				
 				
-					<br /><i>Defined in: </i> <a href="../symbols/src/_home_ajb_src_Steppe_js_Steppe_Renderer.js.html">Renderer.js</a>.
+					<br /><i>Defined in: </i> <a href="../symbols/src/js_Steppe_Renderer.js.html">Renderer.js</a>.
 				
 			</p>
 
@@ -265,7 +265,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&lt;static&gt; &nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont">Steppe.Renderer.<b><a href="../symbols/Steppe.Renderer.html#.addSprite">addSprite</a></b>(image, x, z)
+								<div class="fixedFont">Steppe.Renderer.<b><a href="../symbols/Steppe.Renderer.html#.addSprite">addSprite</a></b>(image, x, y, z)
 								</div>
 								<div class="description">Add a 2D sprite, at the specified world coords, to the sprite
 list.</div>
@@ -323,7 +323,8 @@ in world space.</div>
 							<td class="nameDescription">
 								<div class="fixedFont">Steppe.Renderer.<b><a href="../symbols/Steppe.Renderer.html#.render">render</a></b>()
 								</div>
-								<div class="description">Render the terrain (landscape) including the sky.</div>
+								<div class="description">Render the terrain (landscape) including the sky and any visible
+sprites.</div>
 							</td>
 						</tr>
 					
@@ -333,6 +334,15 @@ in world space.</div>
 								<div class="fixedFont">Steppe.Renderer.<b><a href="../symbols/Steppe.Renderer.html#.setCamera">setCamera</a></b>(camera)
 								</div>
 								<div class="description">Set the current camera.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">Steppe.Renderer.<b><a href="../symbols/Steppe.Renderer.html#.setFogColor">setFogColor</a></b>(cssColor)
+								</div>
+								<div class="description">..</div>
 							</td>
 						</tr>
 					
@@ -468,7 +478,7 @@ in world space.</div>
 					<div class="fixedFont">&lt;static&gt; 
 					
 					<span class="light">{Renderer}</span>
-					<span class="light">Steppe.Renderer.</span><b>addSprite</b>(image, x, z)
+					<span class="light">Steppe.Renderer.</span><b>addSprite</b>(image, x, y, z)
 					
 					</div>
 					<div class="description">
@@ -485,7 +495,7 @@ list.
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<span class="light fixedFont">{Image}</span> <b>image</b>
+									<span class="light fixedFont">{HTMLImageElement}</span> <b>image</b>
 									
 								</dt>
 								<dd>The 2D sprite as an image.</dd>
@@ -495,6 +505,12 @@ list.
 									
 								</dt>
 								<dd>The x-coordinate in world space.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{number}</span> <b>y</b>
+									
+								</dt>
+								<dd>The y-coordinate in world space.</dd>
 							
 								<dt>
 									<span class="light fixedFont">{number}</span> <b>z</b>
@@ -511,7 +527,7 @@ list.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -557,7 +573,7 @@ list.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -603,7 +619,7 @@ list.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -636,8 +652,8 @@ list.
 							<dt class="heading">Returns:</dt>
 							
 								<dd><span class="light fixedFont">{object}</span> An object composed of an angle-of-rotation (in
-                 'fake' degrees) about the y-axis and a 3D point
-                 in world space.</dd>
+                 degrees about the y-axis) and a 3D point in
+                 world space.</dd>
 							
 							</dl>
 						
@@ -752,7 +768,8 @@ in world space.
 					
 					</div>
 					<div class="description">
-						Render the terrain (landscape) including the sky.
+						Render the terrain (landscape) including the sky and any visible
+sprites.
 						
 						
 					</div>
@@ -804,7 +821,50 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name=".setFogColor"> </a>
+					<div class="fixedFont">&lt;static&gt; 
+					
+					<span class="light">{Renderer}</span>
+					<span class="light">Steppe.Renderer.</span><b>setFogColor</b>(cssColor)
+					
+					</div>
+					<div class="description">
+						...
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>cssColor</b>
+									
+								</dt>
+								<dd>...</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -848,7 +908,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -892,7 +952,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -936,7 +996,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -981,7 +1041,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -993,7 +1053,7 @@ in world space.
 					<a name=".setSky"> </a>
 					<div class="fixedFont">&lt;static&gt; 
 					
-					
+					<span class="light">{Renderer}</span>
 					<span class="light">Steppe.Renderer.</span><b>setSky</b>(skyCanvas)
 					
 					</div>
@@ -1021,6 +1081,13 @@ in world space.
 						
 						
 						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
+							
+							</dl>
 						
 						
 						
@@ -1062,7 +1129,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -1107,7 +1174,7 @@ in world space.
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{Renderer}</span> This (fluent interface).</dd>
+								<dd><span class="light fixedFont">{Renderer}</span> This (chainable).</dd>
 							
 							</dl>
 						
@@ -1128,7 +1195,7 @@ in world space.
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Tue Jul 26 2011 19:50:17 GMT+0100 (BST)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Sat Dec 10 2011 19:41:04 GMT-0000 (GMT)
 		</div>
 	</body>
 </html>

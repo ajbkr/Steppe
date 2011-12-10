@@ -46,7 +46,8 @@ var Steppe = (function(Steppe) {
             _spriteList = [],
             _temporaryFramebuffer,
             _texturemap,
-            _visibleSpriteList = [];
+            _visibleSpriteList = [],
+            _zBuffer = [];
 
         var _fog = false,		// disabled (default)
             _quality = _DONT_CARE,	// medium quality (default)
@@ -359,24 +360,23 @@ var Steppe = (function(Steppe) {
                         bottom = 199;
                     }
 
-                    var index, j, i;
+                    var index, i, j;
                     if (ray > _quality) {
                         // Not the left-most ray...
                         index =
                             (top * (framebufferImageData.width << 2)) +
                             (ray << 2);
 
+                        var red   = (color >> 24) & 0xff,
+                            green = (color >> 16) & 0xff,
+                            blue  = (color >>  8) & 0xff;
+
                         for (j = 0; j < bottom - top + 1; ++j) {
                             for (i = 0; i < _quality; ++i) {
-                                framebufferData[index]     =
-                                    (color >> 24) & 0xff;
-                                framebufferData[index + 1] =
-                                    (color >> 16) & 0xff;
-                                framebufferData[index + 2] =
-                                    (color >> 8)  & 0xff;
-                                framebufferData[index + 3] = 0xff;
-
-                                index += 4;
+                                framebufferData[index]   = red;
+                                framebufferData[++index] = green;
+                                framebufferData[++index] = blue;
+                                framebufferData[++index] = 0xff;
                             }
 
                             index += (framebufferImageData.width << 2) -
@@ -388,26 +388,25 @@ var Steppe = (function(Steppe) {
                             (top * (framebufferImageData.width << 2)) +
                             (ray << 2);
 
+                        red   = (color >> 24) & 0xff;
+                        green = (color >> 16) & 0xff;
+                        blue  = (color >>  8) & 0xff;
+
                         for (j = 0; j < bottom - top + 1; ++j) {
                             for (i = 0; i < _quality; ++i) {
                                 framebufferData[index - (_quality << 2)]     =
-                                    (color >> 24) & 0xff;
+                                    red;
                                 framebufferData[index - (_quality << 2) + 1] =
-                                    (color >> 16) & 0xff;
+                                    green;
                                 framebufferData[index - (_quality << 2) + 2] =
-                                    (color >> 8)  & 0xff;
+                                    blue;
                                 framebufferData[index - (_quality << 2) + 3] =
                                     0xff;
 
-                                framebufferData[index]     =
-                                    (color >> 24) & 0xff;
-                                framebufferData[index + 1] =
-                                    (color >> 16) & 0xff;
-                                framebufferData[index + 2] =
-                                    (color >> 8)  & 0xff;
-                                framebufferData[index + 3] = 0xff;
-
-                                index += 4;
+                                framebufferData[index]   = red;
+                                framebufferData[++index] = green;
+                                framebufferData[++index] = blue;
+                                framebufferData[++index] = 0xff;
                             }
 
                             index += (framebufferImageData.width << 2) -
@@ -569,17 +568,16 @@ var Steppe = (function(Steppe) {
                                 (top * (framebufferImageData.width << 2)) +
                                 (ray << 2);
 
+                            var red   = (color >> 24) & 0xff,
+                                green = (color >> 16) & 0xff,
+                                blue  = (color >>  8) & 0xff;
+
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
-                                    framebufferData[index]     =
-                                        (color >> 24) & 0xff;
-                                    framebufferData[index + 1] =
-                                        (color >> 16) & 0xff;
-                                    framebufferData[index + 2] =
-                                        (color >> 8)  & 0xff;
-                                    framebufferData[index + 3] = 0xff;
-
-                                    index += 4;
+                                    framebufferData[index++]     = red;
+                                    framebufferData[index++] = green;
+                                    framebufferData[index++] = blue;
+                                    framebufferData[index++] = 0xff;
                                 }
 
                                 index += (framebufferImageData.width << 2) -
@@ -591,30 +589,28 @@ var Steppe = (function(Steppe) {
                                 (top * (framebufferImageData.width << 2)) +
                                 (ray << 2);
 
+                            red   = (color >> 24) & 0xff;
+                            green = (color >> 16) & 0xff;
+                            blue  = (color >>  8) & 0xff;
+
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
                                     framebufferData[index -
-                                        (_quality << 2)]     =
-                                        (color >> 24) & 0xff;
+                                        (_quality << 2)]     = red;
                                     framebufferData[index -
-                                        (_quality << 2) + 1] =
-                                        (color >> 16) & 0xff;
+                                        (_quality << 2) + 1] = green;
                                     framebufferData[index -
-                                        (_quality << 2) + 2] =
-                                        (color >> 8)  & 0xff;
+                                        (_quality << 2) + 2] = blue;
                                     framebufferData[index -
                                         (_quality << 2) + 3] =
                                         0xff;
 
-                                    framebufferData[index]     =
-                                        (color >> 24) & 0xff;
-                                    framebufferData[index + 1] =
-                                        (color >> 16) & 0xff;
-                                    framebufferData[index + 2] =
-                                        (color >> 8)  & 0xff;
-                                    framebufferData[index + 3] = 0xff;
+                                    framebufferData[index++] = red;
+                                    framebufferData[index++] = green;
+                                    framebufferData[index++] = blue;
+                                    framebufferData[index++] = 0xff;
 
-                                    index += 4;
+//                                    index += 4;
                                 }
 
                                 index += (framebufferImageData.width << 2) -
@@ -698,6 +694,51 @@ var Steppe = (function(Steppe) {
             }
         };
 
+        /**
+         * ...
+         */
+        var _renderSprites = function() {
+            // For each visible sprite...
+            for (var i = 0; i < _visibleSpriteList.length; ++i) {
+                // If the current sprite has been removed...
+                if (_visibleSpriteList[i] === undefined) {
+                    // Move to the next sprite.
+                    continue;
+                }
+
+                var sprite = _visibleSpriteList[i];
+
+                // Draw the sprite.
+                _framebuffer.drawImage(
+                    sprite.image,
+                    sprite.x,
+                    sprite.y - _smooth,
+                    sprite.width,
+                    sprite.height);
+
+                // Remove the sprite from the list of visible sprites.
+                _visibleSpriteList[i] = undefined;
+            }
+        };
+
+        /**
+         * ...
+         */
+        var _sortVisibleSpriteList = function() {
+            var length = _visibleSpriteList.length;
+
+            for (var i = 0; i < length - 1; ++i) {
+                for (var j = i + 1; j < length; ++j) {
+                    if (_visibleSpriteList[j].vectorLength >
+                        _visibleSpriteList[i].vectorLength) {
+                        var temp = _visibleSpriteList[i];
+                        _visibleSpriteList[i] = _visibleSpriteList[j];
+                        _visibleSpriteList[j] = temp;
+                    }
+                }
+            }
+        };
+
         if (arguments.length > 1) {
             throw('Too many arguments passed to constructor');
         }
@@ -728,15 +769,19 @@ var Steppe = (function(Steppe) {
              *
              * @param {HTMLImageElement} image The 2D sprite as an image.
              * @param {number} x The x-coordinate in world space.
+             * @param {number} y The y-coordinate in world space.
              * @param {number} z The z-coordinate in world space.
              * @return {Renderer} This (chainable).
              */
-            addSprite: function(image, x, z) {
+            addSprite: function(image, x, y, z) {
                 if ( !(image instanceof HTMLImageElement)) {
                     throw('Invalid image: not an instance of HTMLImageElement');
                 }
                 if (typeof(x) != 'number') {
                     throw('Invalid x: not a number');
+                }
+                if (typeof(y) != 'number') {
+                    throw('Invalid y: not a number');
                 }
                 if (typeof(z) != 'number') {
                     throw('Invalid z: not a number');
@@ -745,17 +790,17 @@ var Steppe = (function(Steppe) {
                 if (x < 1024 || x >= 1024 + 1024) {
                     throw('Invalid x: must be in the range 1024..2047');
                 }
+                if (y < 0 || y >= 1024) {
+                    throw('Invalid y: must be in the range 0..1023');
+                }
                 if (z < 1024 || z >= 1024 + 1024) {
                     throw('Invalid z: must be in the range 1024..2047');
                 }
 
-                var u = x & 1023;
-                var v = z & 1023;
-
                 _spriteList.push({
                     image: image,
                     x: x,
-                    y: _heightmap[(v << 10) + u],
+                    y: y & 1023,
                     z: z
                 });
 
@@ -1022,6 +1067,11 @@ var Steppe = (function(Steppe) {
                     }
                 }
 
+                _sortVisibleSpriteList();
+/*                for (var k = 0; k < _visibleSpriteList.length; ++k) {
+                    console.log(_visibleSpriteList[k].vectorLength);
+                }*/
+
                 var initialAngle = _camera.angle - _THIRTY_DEGREE_ANGLE;
 
                 if (initialAngle < 0) {
@@ -1036,7 +1086,9 @@ var Steppe = (function(Steppe) {
                 // If there are sprites in view...
                 if (_visibleSpriteList.length > 0) {
                     // Render the terrain /with/ sprites back-to-front.
-                    _renderBackToFront(initialAngle);
+//                    _renderBackToFront(initialAngle);
+                    _renderFrontToBack(initialAngle);
+                    _renderSprites();
                 } else {
                     // Render the terrain front-to-back. NOTE: This method is
                     // considerably faster!
@@ -1197,7 +1249,7 @@ var Steppe = (function(Steppe) {
                 } else if (quality === 'high') {
                     _quality = _NICEST;
                 } else {
-                    throw("Invalid quality; must be 'low', 'medium', " +
+                    throw("Invalid quality: must be 'low', 'medium', " +
                         "or 'high'");
                 }
 
