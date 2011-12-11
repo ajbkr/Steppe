@@ -482,9 +482,15 @@ var Steppe = (function(Steppe) {
         };
 
         /**
-         * ...
+         * Render visible sprites.
          */
         var _renderSprites = function() {
+            var spriteCanvas = document.createElement('canvas');
+            spriteCanvas.width  = 1;
+            spriteCanvas.height = 1;
+
+            var spriteContext = spriteCanvas.getContext('2d');
+
             // For each visible sprite...
             for (var i = 0; i < _visibleSpriteList.length; ++i) {
                 // If the current sprite has been removed...
@@ -495,17 +501,47 @@ var Steppe = (function(Steppe) {
 
                 var sprite = _visibleSpriteList[i];
 
-                // Draw the sprite.
-                _framebuffer.drawImage(
-                    sprite.image,
-                    sprite.x,
-                    sprite.y - _smooth,
-                    sprite.width,
-                    sprite.height);
+                if (_fog) {
+                    spriteCanvas.width = sprite.image.width;
+                    spriteCanvas.height = sprite.image.height;
+
+                    spriteContext.save();
+
+                    spriteContext.drawImage(sprite.image, 0, 0);
+                    spriteContext.globalCompositeOperation = 'source-atop';
+                    spriteContext.fillStyle = 'rgba(' +
+                        ((_fogColor >> 24) & 0xff) + ', ' +
+                        ((_fogColor >> 16) & 0xff) + ', ' +
+                        ((_fogColor >>  8) & 0xff) + ', ' +
+                        (1 - (sprite.y + sprite.height) / 200) + ')';
+                    spriteContext.fillRect(0, 0, spriteCanvas.width,
+                        spriteCanvas.height);
+
+                    // Draw the sprite (canvas).
+                    _framebuffer.drawImage(
+                        spriteCanvas,
+                        sprite.x,
+                        sprite.y - _smooth,
+                        sprite.width,
+                        sprite.height);
+
+                    spriteContext.restore();
+                } else {
+                    // Draw the sprite.
+                    _framebuffer.drawImage(
+                        sprite.image,
+                        sprite.x,
+                        sprite.y - _smooth,
+                        sprite.width,
+                        sprite.height);
+                }
 
                 // Remove the sprite from the list of visible sprites.
                 delete _visibleSpriteList[i];
             }
+
+            delete spriteContext;
+            delete spriteCanvas;
         };
 
         /**

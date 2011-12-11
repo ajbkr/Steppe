@@ -28,13 +28,13 @@ though; go right ahead!
 * Configurable render quality from low, through medium, to high
 * 2D billboarded sprites (JS only)
 * Alternative texturemap for out-of-bounds terrain
+* Fog applied to sprites
 * PHP port for graceful degradation where HTML5 canvas isn't supported
 * MIT license
 * All HTML5 2D canvas; no WebGL!
 
 ### Coming Soon ###
 
-* Fog applied to sprites
 * Sanitised API
 * Pre-calculated lightmap support for shadows
 
