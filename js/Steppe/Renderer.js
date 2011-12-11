@@ -100,7 +100,7 @@ var Steppe = (function(Steppe) {
          */
         var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
             if (typeof _outOfBoundsTexturemap !== 'undefined') {
-                var index = (y << 12) + (x << 2);
+                var index = (y * 1024 + x) * 4;
 
                 return (_outOfBoundsTexturemap[index] << 24)  |
                     (_outOfBoundsTexturemap[index + 1] << 16) |
@@ -152,7 +152,7 @@ var Steppe = (function(Steppe) {
          */
         var _getPixelFromTexturemap = function(x, y) {
             if (typeof _outOfBoundsTexturemap !== 'undefined') {
-                var index = (y << 12) + (x << 2);
+                var index = (y * 1024 + x) * 4;
 
                 return (_texturemap[index] << 24)  |
                     (_texturemap[index + 1] << 16) |
@@ -276,23 +276,23 @@ var Steppe = (function(Steppe) {
 
                 for (var row = _MAXIMUM_ROW; row >= 0; --row) {
                     var rayLength = _rayLengthLookupTable[_camera.y][
-                        (row << 8) + (row << 6) + ray];
+                        row * 320 + ray];
 
                     var rayX = _camera.x + rayLength *
                         _cosineLookupTable[currentAngle] | 0,
                         rayZ = _camera.z + rayLength *
                         _sineLookupTable[currentAngle]   | 0;
 
-                    var u = rayX & 1023;
-                    var v = rayZ & 1023;
+                    var u = rayX % 1024;
+                    var v = rayZ % 1024;
 
                     var height;
                     if ((rayX < 1024 || rayX >= 1024 + 1024 ||
                         rayZ < 1024 || rayZ >= 1024 + 1024) &&
                         _outOfBoundsHeightmap.length > 0) {
-                        height = _outOfBoundsHeightmap[(v << 10) + u];
+                        height = _outOfBoundsHeightmap[v * 1024 + u];
                     } else {
-                        height = _heightmap[(v << 10) + u];
+                        height = _heightmap[v * 1024 + u];
                     }
 
                     var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
@@ -350,12 +350,14 @@ var Steppe = (function(Steppe) {
                             bottom = 199;
                         }
 
+                        var qualityMultipliedByFour = _quality * 4;
+
                         var index, i, j;
                         if (ray > _quality) {
                             // Not the left-most ray...
                             index =
-                                (top * (framebufferImageData.width << 2)) +
-                                (ray << 2);
+                                (top * (framebufferImageData.width * 4)) +
+                                (ray * 4);
 
                             var red   = (color >> 24) & 0xff,
                                 green = (color >> 16) & 0xff,
@@ -363,20 +365,20 @@ var Steppe = (function(Steppe) {
 
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
-                                    framebufferData[index++]     = red;
+                                    framebufferData[index++] = red;
                                     framebufferData[index++] = green;
                                     framebufferData[index++] = blue;
                                     framebufferData[index++] = 0xff;
                                 }
 
-                                index += (framebufferImageData.width << 2) -
-                                    (_quality << 2);
+                                index += (framebufferImageData.width * 4) -
+                                    qualityMultipliedByFour;
                             }
                         } else {
                             // Left-most ray: we don't cast rays for column 0!
                             index =
-                                (top * (framebufferImageData.width << 2)) +
-                                (ray << 2);
+                                (top * (framebufferImageData.width * 4)) +
+                                (ray * 4);
 
                             red   = (color >> 24) & 0xff;
                             green = (color >> 16) & 0xff;
@@ -385,14 +387,13 @@ var Steppe = (function(Steppe) {
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
                                     framebufferData[index -
-                                        (_quality << 2)]     = red;
+                                        qualityMultipliedByFour]     = red;
                                     framebufferData[index -
-                                        (_quality << 2) + 1] = green;
+                                        qualityMultipliedByFour + 1] = green;
                                     framebufferData[index -
-                                        (_quality << 2) + 2] = blue;
+                                        qualityMultipliedByFour + 2] = blue;
                                     framebufferData[index -
-                                        (_quality << 2) + 3] =
-                                        0xff;
+                                        qualityMultipliedByFour + 3] = 0xff;
 
                                     framebufferData[index++] = red;
                                     framebufferData[index++] = green;
@@ -400,8 +401,8 @@ var Steppe = (function(Steppe) {
                                     framebufferData[index++] = 0xff;
                                 }
 
-                                index += (framebufferImageData.width << 2) -
-                                    (_quality << 2);
+                                index += (framebufferImageData.width * 4) -
+                                    qualityMultipliedByFour;
                             }
                         }
                     }
@@ -721,7 +722,7 @@ var Steppe = (function(Steppe) {
                 var u = x & 1023;
                 var v = z & 1023;
 
-                return _heightmap[(v << 10) + u];
+                return _heightmap[v * 1024 + u];
             },
 
             /**
@@ -843,8 +844,8 @@ var Steppe = (function(Steppe) {
 
                             // Calculate the 3D coords of the sprite.
                             var spriteX = sprite.x,
-                                spriteY = _heightmap[((sprite.z & 1023) << 10) +
-                                    (sprite.x & 1023)],
+                                spriteY = _heightmap[((sprite.z % 1024) *
+                                    1024) + (sprite.x % 1024)],
                                 spriteZ = sprite.z;
 
                             var row = _getRow(spriteX, spriteZ, x);
@@ -863,9 +864,9 @@ var Steppe = (function(Steppe) {
                                 rayZ < 1024 || rayZ >= 1024 + 1024) &&
                                 _outOfBoundsHeightmap.length > 0) {
                                 projectedHeight = _outOfBoundsHeightmap[
-                                    (v << 10) + u];
+                                    v * 1024 + u];
                             } else {
-                                projectedHeight = _heightmap[(v << 10) + u];
+                                projectedHeight = _heightmap[v * 1024 + u];
                             }
 
                             var projectedScale = projectedHeight * scale;
