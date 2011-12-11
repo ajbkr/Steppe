@@ -297,7 +297,7 @@ var Steppe = (function(Steppe) {
 
                     var scale = height * _SCALE_FACTOR / (rayLength + 1) | 0;
 
-                    var top    = (_CANVAS_HEIGHT >> 1) -
+                    var top    = (_CANVAS_HEIGHT / 2) -
                         (_camera.y - _CANVAS_HEIGHT) + row - scale,
                         bottom = top + scale;
 
@@ -436,7 +436,7 @@ var Steppe = (function(Steppe) {
             angleOfRotation |= 0; 
 
             var skyWidth  = _sky.width;
-            var skyHeight = (_CANVAS_HEIGHT >> 1) -
+            var skyHeight = (_CANVAS_HEIGHT / 2) -
                 (_camera.y - _CANVAS_HEIGHT);
 
             if (skyHeight > _sky.height) {
@@ -851,13 +851,13 @@ var Steppe = (function(Steppe) {
                             var row = _getRow(spriteX, spriteZ, x);
 
                             // Centre the scaled sprite.
-                            x -= (width >> 1);
+                            x -= width / 2;
 
                             var rayX = spriteX,
                                 rayZ = spriteZ;
 
-                            var u = rayX & 1023,
-                                v = rayZ & 1023;
+                            var u = rayX % 1024,
+                                v = rayZ % 1024;
 
                             var projectedHeight;
                             if ((rayX < 1024 || rayX >= 1024 + 1024 ||
@@ -871,7 +871,7 @@ var Steppe = (function(Steppe) {
 
                             var projectedScale = projectedHeight * scale;
 
-                            var top = (_CANVAS_HEIGHT >> 1) -
+                            var top = (_CANVAS_HEIGHT / 2) -
                                 (_camera.y - _CANVAS_HEIGHT) + row -
                                 projectedScale,
                                 bottom = top + projectedScale;
