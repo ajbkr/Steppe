@@ -101,8 +101,8 @@ var Comparison = (function(undefined) {
                     .enable('fog')
 //                    .setFogColor('#000000')
 //                    .enable('smooth')
-                    .enable('reflection-map')
-                    .setWaterHeight(82)
+//                    .enable('reflection-map')
+//                    .setWaterHeight(82)
                 ;
 
                 renderer.addSprite(images['sprite'], 1024 + 512 - 128,
@@ -118,7 +118,8 @@ var Comparison = (function(undefined) {
                 renderer.setCamera({
                     angle: 255,
                     x:     1024 + 768 - 128 - 96,
-                    y:     200,
+                    y:     renderer.getHeight(1024 + 768 - 128 - 96,
+                               1024 + 768 + 128),
                     z:     1024 + 768 + 128
                 });
 

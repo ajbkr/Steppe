@@ -137,7 +137,7 @@ var Steppe = (function(Steppe) {
 
             return _skyData[index]          |
                 (_skyData[index + 1] <<  8) |
-                (_skyData[index + 2] << 16) | 0xff;
+                (_skyData[index + 2] << 16) | 0xff000000;
         };
 
         /**
