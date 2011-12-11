@@ -33,7 +33,7 @@ var Steppe = (function(Steppe) {
 
         var _camera = { angle: 0, x: 0, y: _CAMERA_Y, z: 0 },
             _cosineLookupTable = [],
-            _fogColor = 0x7f7f7fff,
+            _fogColor = 0xff7f7f7f,
             _framebuffer,
             _heightmap = [],
             _inverseDistortionLookupTable = [],
@@ -57,10 +57,10 @@ var Steppe = (function(Steppe) {
         /**
          * Blend two colours together using an alpha value.
          *
-         * @param {number} firstColor First, or source, colour (RGBA).
-         * @param {number} secondColor Second, or destination, colour (RGBA).
+         * @param {number} firstColor First, or source, colour (ABGR).
+         * @param {number} secondColor Second, or destination, colour (ABGR).
          * @param {number} alpha Alpha value in the range 0..255.
-         * @return {number} Mixed colour (RGBA).
+         * @return {number} Mixed colour (ABGR).
          */
         var _alphaBlend = function(firstColor, secondColor, alpha) {
             if (alpha < 0) {
@@ -72,20 +72,20 @@ var Steppe = (function(Steppe) {
             var normalisedAlpha = alpha / 255,
                 adjustedAlpha   = 1 - normalisedAlpha;
 
-            var mixedRed   = ((firstColor >> 24) & 0xff) * normalisedAlpha | 0,
-                mixedGreen = ((firstColor >> 16) & 0xff) * normalisedAlpha | 0,
-                mixedBlue  = ((firstColor >>  8) & 0xff) * normalisedAlpha | 0;
+            var mixedRed   = ( firstColor        & 0xff) * normalisedAlpha | 0,
+                mixedGreen = ((firstColor >>  8) & 0xff) * normalisedAlpha | 0,
+                mixedBlue  = ((firstColor >> 16) & 0xff) * normalisedAlpha | 0;
 
-            mixedRed   += Math.floor(((secondColor >> 24) & 0xff) *
+            mixedRed   += Math.floor( (secondColor        & 0xff) *
                 adjustedAlpha);
-            mixedGreen += Math.floor(((secondColor >> 16) & 0xff) *
+            mixedGreen += Math.floor(((secondColor >>  8) & 0xff) *
                 adjustedAlpha);
-            mixedBlue  += Math.floor(((secondColor >> 8)  & 0xff) *
+            mixedBlue  += Math.floor(((secondColor >> 16) & 0xff) *
                 adjustedAlpha);
 
-            return (mixedRed << 24) |
-                (mixedGreen << 16)  |
-                (mixedBlue  << 8)   | 0xff;
+            return mixedRed        |
+                (mixedGreen <<  8) |
+                (mixedBlue  << 16) | 0xff000000;
         };
 
         /**
@@ -95,18 +95,18 @@ var Steppe = (function(Steppe) {
          *                   0..out-of-bounds-texturemap-width - 1.
          * @param {number} y The y-coordinate; must be in the range
          *                   0..out-of-bounds-texturemap-height - 1.
-         * @return {number} An integer composed of RGBA components for the
+         * @return {number} An integer composed of ABGR components for the
          *                  corresponding pixel.
          */
         var _getPixelFromOutOfBoundsTexturemap = function(x, y) {
             if (typeof _outOfBoundsTexturemap !== 'undefined') {
                 var index = (y * 1024 + x) * 4;
 
-                return (_outOfBoundsTexturemap[index] << 24)  |
-                    (_outOfBoundsTexturemap[index + 1] << 16) |
-                    (_outOfBoundsTexturemap[index + 2] <<  8) | 0xff;
+                return _outOfBoundsTexturemap[index]          |
+                    (_outOfBoundsTexturemap[index + 1] <<  8) |
+                    (_outOfBoundsTexturemap[index + 2] << 16) | 0xff000000;
             } else {
-                return 0x7f7f7fff;
+                return 0xff7f7f7f;
             }
         };
 
@@ -117,7 +117,7 @@ var Steppe = (function(Steppe) {
          *                   0..sky-width - 1.
          * @param {number} y The y-coordinate; should be in the range
          *                   0..sky-height - 1.
-         * @return {number} An integer composed of RGBA components for the
+         * @return {number} An integer composed of ABGR components for the
          *                  corresponding pixel.
          */
         var _getPixelFromSky = function(x, y) {
@@ -135,9 +135,9 @@ var Steppe = (function(Steppe) {
 
             var index = (y * 1920 + (currentAngle + x | 0) % 1920) * 4;
 
-            return (_skyData[index] << 24)  |
-                (_skyData[index + 1] << 16) |
-                (_skyData[index + 2] <<  8) | 0xff;
+            return _skyData[index]          |
+                (_skyData[index + 1] <<  8) |
+                (_skyData[index + 2] << 16) | 0xff;
         };
 
         /**
@@ -147,16 +147,16 @@ var Steppe = (function(Steppe) {
          *                   0..texturemap-width - 1.
          * @param {number} y The y-coordinate; must be in the range
          *                   0..texturemap-width - 1.
-         * @return {number} An integer composed of RGBA components for the
+         * @return {number} An integer composed of ABGR components for the
          *                  corresponding pixel.
          */
         var _getPixelFromTexturemap = function(x, y) {
             if (typeof _outOfBoundsTexturemap !== 'undefined') {
                 var index = (y * 1024 + x) * 4;
 
-                return (_texturemap[index] << 24)  |
-                    (_texturemap[index + 1] << 16) |
-                    (_texturemap[index + 2] <<  8) | 0xff;
+                return _texturemap[index]          |
+                    (_texturemap[index + 1] <<  8) |
+                    (_texturemap[index + 2] << 16) | 0xff000000;
             } else {
                 return 0xffffffff;
             }
@@ -305,7 +305,7 @@ var Steppe = (function(Steppe) {
                         bottom = previousTop;
                         previousTop = top;
 
-                        var color = 0x000000ff;
+                        var color = 0xff000000;
 
                         var texel;
                         if (rayX < 1024 || rayX >= 1024 + 1024 ||
@@ -359,9 +359,9 @@ var Steppe = (function(Steppe) {
                                 (top * (framebufferImageData.width * 4)) +
                                 (ray * 4);
 
-                            var red   = (color >> 24) & 0xff,
-                                green = (color >> 16) & 0xff,
-                                blue  = (color >>  8) & 0xff;
+                            var red   =  color        & 0xff,
+                                green = (color >>  8) & 0xff,
+                                blue  = (color >> 16) & 0xff;
 
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
@@ -380,9 +380,9 @@ var Steppe = (function(Steppe) {
                                 (top * (framebufferImageData.width * 4)) +
                                 (ray * 4);
 
-                            red   = (color >> 24) & 0xff;
-                            green = (color >> 16) & 0xff;
-                            blue  = (color >>  8) & 0xff;
+                            red   =  color        & 0xff;
+                            green = (color >>  8) & 0xff;
+                            blue  = (color >> 16) & 0xff;
 
                             for (j = 0; j < bottom - top + 1; ++j) {
                                 for (i = 0; i < _quality; ++i) {
@@ -468,14 +468,14 @@ var Steppe = (function(Steppe) {
                 var skyGradient = skyContext.createLinearGradient(0, 0, 0,
                     skyHeight - 1);
                 skyGradient.addColorStop(0, 'rgba(' +
-                    ((_fogColor >> 24) & 0xff) + ', ' +
-                    ((_fogColor >> 16) & 0xff) + ', ' +
+                    ( _fogColor        & 0xff) + ', ' +
                     ((_fogColor >>  8) & 0xff) + ', ' +
+                    ((_fogColor >> 16) & 0xff) + ', ' +
                     (1 - (1 / (100 / skyHeight))) + ')');
                 skyGradient.addColorStop(1, 'rgba(' +
-                    ((_fogColor >> 24) & 0xff) + ', ' +
-                    ((_fogColor >> 16) & 0xff) + ', ' +
-                    ((_fogColor >>  8) & 0xff) + ', 1)');
+                    ( _fogColor        & 0xff) + ', ' +
+                    ((_fogColor >>  8) & 0xff) + ', ' +
+                    ((_fogColor >> 16) & 0xff) + ', 1)');
 
                 _framebuffer.fillStyle = skyGradient;
                 _framebuffer.fillRect(0, 0, 320, skyHeight);
@@ -511,9 +511,9 @@ var Steppe = (function(Steppe) {
                     spriteContext.drawImage(sprite.image, 0, 0);
                     spriteContext.globalCompositeOperation = 'source-atop';
                     spriteContext.fillStyle = 'rgba(' +
-                        ((_fogColor >> 24) & 0xff) + ', ' +
-                        ((_fogColor >> 16) & 0xff) + ', ' +
+                        ( _fogColor        & 0xff) + ', ' +
                         ((_fogColor >>  8) & 0xff) + ', ' +
+                        ((_fogColor >> 16) & 0xff) + ', ' +
                         (1 - (sprite.y + sprite.height) / 200) + ')';
                     spriteContext.fillRect(0, 0, spriteCanvas.width,
                         spriteCanvas.height);
@@ -751,9 +751,25 @@ var Steppe = (function(Steppe) {
              * sprites.
              */
             render: function() {
+                /*
+                 * 1. Construct a list of visible sprites; sprites are visible
+                 *    where they fall within the -30..30 (60-degree) horizontal
+                 *    field-of-view based on the direction that the camera is
+                 *    pointing in.
+                 * 2. For each visible sprite, determine its projected 2D
+                 *    coords (x and y) and its scaled width and height based on
+                 *    distance from the camera. The y coord corresponds to the
+                 *    bottom of the sprite and the x coord is the centre of the
+                 *    width of the sprite.
+                 * 3. After drawing each row of terrain, draw any sprites where
+                 *    the sprite's 'projected' row equals the current row.
+                 *    Remove the sprite from the list of visible sprites.
+                 * 4. Rinse and repeat.
+                 */
+
                 // Fill the upper region of the framebuffer with the
                 // fog-colour.
-                _framebuffer.fillStyle = '#7f7f7f';
+                _framebuffer.fillStyle = '#7f7f7f';	// XXX ?!
                 _framebuffer.fillRect(0, 100, 320, 25);
 
                 _renderSky();
@@ -907,22 +923,6 @@ var Steppe = (function(Steppe) {
 //                var date = new Date();
 //                var startTime = date.getTime();
 
-                /*
-                 * 1. Construct a list of visible sprites; sprites are visible
-                 *    where they fall within the -30..30 (60-degree) horizontal
-                 *    field-of-view based on the direction that the camera is
-                 *    pointing in.
-                 * 2. For each visible sprite, determine its projected 2D
-                 *    coords (x and y) and its scaled width and height based on
-                 *    distance from the camera. The y coord corresponds to the
-                 *    bottom of the sprite and the x coord is the centre of the
-                 *    width of the sprite.
-                 * 3. After drawing each row of terrain, draw any sprites where
-                 *    the sprite's 'projected' row equals the current row.
-                 *    Remove the sprite from the list of visible sprites.
-                 * 4. Rinse and repeat.
-                 */
-
                 // Render the terrain front-to-back.
                 _renderFrontToBack(initialAngle);
 
@@ -986,9 +986,9 @@ var Steppe = (function(Steppe) {
                     green = matches[2],
                     blue  = matches[3];
 
-                _fogColor = ((parseInt(red,   16) << 24) |
-                             (parseInt(green, 16) << 16) |
-                             (parseInt(blue,  16) <<  8) | 0xff);
+                _fogColor = ( parseInt(red,   16)        |
+                             (parseInt(green, 16) <<  8) |
+                             (parseInt(blue,  16) << 16) | 0xff000000);
 
                 return this;
             },
