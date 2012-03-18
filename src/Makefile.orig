@@ -1,0 +1,24 @@
+AR = /home/ajb/tmp/native_client_sdk_0_5_1052/toolchain/linux_x86/bin/nacl-ar
+CXX = /home/ajb/tmp/native_client_sdk_0_5_1052/toolchain/linux_x86/bin/nacl-g++
+LD = /home/ajb/tmp/native_client_sdk_0_5_1052/toolchain/linux_x86/bin/nacl-ld
+RM = /bin/rm
+
+LIBGD = /home/ajb/tmp/pierrejoye-gd-libgd-default/src/libgd-nacl.a
+
+CXXFLAGS = -DNDEBUG -static -std=c++0x -O3
+INCLUDES = -I/home/ajb/tmp/pierrejoye-gd-libgd-default/src/
+LIBS = -lm /home/ajb/tmp/native_client_sdk_0_5_1052/toolchain/linux_x86/i686-nacl/usr/lib/libz.a /home/ajb/tmp/native_client_sdk_0_5_1052/toolchain/linux_x86/i686-nacl/usr/lib/libpng.a
+
+all: Compositor.o Renderer.o libsteppe.a
+
+Compositor.o: Compositor.cxx Steppe.hh
+	$(CXX) $(CXXFLAGS) -c Compositor.cxx $(LIBGD) $(INCLUDES) $(LIBS)
+
+Renderer.o: Renderer.cxx Steppe.hh
+	$(CXX) $(CXXFLAGS) -c Renderer.cxx $(LIBGD) $(INCLUDES) $(LIBS)
+
+libsteppe.a: Compositor.o Renderer.o
+	$(AR) rvs libsteppe.a $?
+
+clean:
+	$(RM) -f Compositor.o Renderer.o libsteppe.a
