@@ -37,7 +37,7 @@ though; go right ahead!
 
 * Sanitised API
 * Pre-calculated lightmap support for shadows
-* C++/SDL port of Steppe (for use with [Emscripten](https://github.com/kripken/emscripten)
+* C++/SDL port of Steppe (for use with [Emscripten](https://github.com/kripken/emscripten))
 
 ### Steppe Mars Demo ###
 
