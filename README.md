@@ -29,7 +29,7 @@ though; go right ahead!
 * 2D billboarded sprites (JS only)
 * Alternative texturemap for out-of-bounds terrain
 * Fog applied to sprites
-* PHP port for graceful degradation where HTML5 canvas isn't supported
+* PHP port for graceful degradation where HTML5 canvas isn't supported (incomplete)
 * MIT license
 * All HTML5 2D canvas; no WebGL!
 
@@ -37,6 +37,7 @@ though; go right ahead!
 
 * Sanitised API
 * Pre-calculated lightmap support for shadows
+* C++/SDL port of Steppe (for use with [Emscripten](https://github.com/kripken/emscripten)
 
 ### Steppe Mars Demo ###
 
