@@ -113,7 +113,7 @@ namespace Steppe
         }
 
         float normalisedAlpha = alpha / 255.0F;
-        float adjustedAlpha   = 1 - normalisedAlpha;
+        float adjustedAlpha   = 1.0F - normalisedAlpha;
 
         int mixedRed   = (int) (((firstColor >> 24) & 0xff) * normalisedAlpha);
         int mixedGreen = (int) (((firstColor >> 16) & 0xff) * normalisedAlpha);
@@ -330,7 +330,8 @@ namespace Steppe
                             int mixedColor = _alphaBlend(data,
                                 texel, (int) ((float) (_waterHeight - height) /
                                 (float) _waterHeight * 255.0F * 2.0F));
-
+cerr << ((int) ((float) (_waterHeight - height) / (float) _waterHeight *
+    255.0F * 2.0F)) << endl;
                             texel = mixedColor;
 
                             height = _waterHeight;
@@ -420,8 +421,6 @@ namespace Steppe
         }
 
         if (angleOfRotation + 320 <= skyWidth) {
-/*            gdImageCopy(_framebuffer, _sky, 0, 0, angleOfRotation, sy, 320,
-                skyHeight);*/
             for (int y = 0; y < skyHeight; ++y) {
                 for (int x = 0; x < 320; ++x) {
                     Compositor::putPixel(_framebuffer, x, y,
@@ -430,8 +429,6 @@ namespace Steppe
                 }
             }
         } else {
-/*            gdImageCopy(_framebuffer, _sky, 0, 0, angleOfRotation, sy,
-                skyWidth - angleOfRotation, skyHeight);*/
             for (int y = 0; y < skyHeight; ++y) {
                 for (int x = 0; x < skyWidth - angleOfRotation; ++x) {
                     Compositor::putPixel(_framebuffer, x, y,
@@ -439,13 +436,12 @@ namespace Steppe
                         sy + y));
                 }
             }
-/*            gdImageCopy(_framebuffer, _sky, skyWidth - angleOfRotation, 0,
-                0, sy, 320 - (skyWidth - angleOfRotation), skyHeight);*/
             for (int y = 0; y < skyHeight; ++y) {
                 for (int x = 0; x < 320 - (skyWidth - angleOfRotation); ++x) {
                     Compositor::putPixel(_framebuffer,
                         skyWidth - angleOfRotation + x, y,
-                        Compositor::getPixel(_sky, angleOfRotation + x,
+                        Compositor::getPixel(_sky,
+                        (skyWidth - angleOfRotation) + angleOfRotation + x,
                         sy + y));
                 }
             }
