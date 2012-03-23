@@ -56,11 +56,8 @@ namespace Steppe
             for (int x = 0; x < 1024; ++x) {
                 int index = (y << 10) + x;
 
-/*                _heightmap[index] = gdImageGetPixel(heightmapCanvas, x, y) &
-                    0xff;*/
-                _heightmap[index] = ((unsigned int*) heightmapCanvas->pixels)[
-                    y * (heightmapCanvas->pitch / sizeof(unsigned int)) + x] &
-                    0xff;
+                _heightmap[index] = Compositor::getPixel(heightmapCanvas, x,
+                    y) & 0xff;
                 _outOfBoundsHeightmap[index] = _heightmap[index];
             }
         }
