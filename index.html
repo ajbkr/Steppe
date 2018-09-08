@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+  <head>
+<style>
+body {
+  font-family: Arial, sans;
+  font-size: 10pt;
+}
+</style>
+    <title>Demo - Steppe</title>
+  </head>
+  <body onload="Demo.run()">
+    <h1>Steppe</h1>
+    <h2>Demo</h2>
+    <h3>JavaScript (HTML5 Canvas)</h3>
+    <canvas id="canvas" style="height: 400px; width: 640px" height="200"
+     width="320">
+      <p>
+        Your Web browser does not support the canvas element.
+      </p>
+    </canvas>
+<script>
+document.writeln('<' + 'script src="js/Steppe/Compositor.js?' +
+ Number(new Date()) + '" type="text/javascript">' + '<' + '/script>');
+document.writeln('<' + 'script src="js/Steppe/Renderer.js?' +
+ Number(new Date()) + '" type="text/javascript">' + '<' + '/script>');
+</script>
+<script type="text/javascript">
+const Demo = (function(undefined) {
+  const _WATER_HEIGHT = 88;
+
+  return {
+    run: function() {
+      const canvas = document.getElementById('canvas');
+
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width  = 320;
+      offscreenCanvas.height = 200;
+
+      const context = canvas.getContext('2d');
+      const offscreenContext = offscreenCanvas.getContext('2d');
+
+      context.fillStyle = '#000';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      const renderer = Steppe.Renderer(offscreenCanvas);
+
+      const compositor = Steppe.Compositor();
+
+      const images = {
+        sky:        '/images/sky.png',
+        heightmap:  '/images/heightmap.png',
+        texturemap: '/images/texturemap.png',
+        sprite:     '/images/sprite.png'
+      };
+
+      let image = new Image();
+      image.onload = _ => {
+        images.sky = image;
+
+        image = new Image();
+        image.onload = _ => {
+          images.heightmap = image;
+
+          image = new Image();
+          image.onload = _ => {
+            images.texturemap = image;
+
+            image = new Image();
+            image.onload = _ => {
+              images.sprite = image;
+
+              draw();
+            };
+            image.src = images.sprite;
+          };
+          image.src = images.texturemap;
+        };
+        image.src = images.heightmap;
+      };
+      image.src = images.sky;
+
+      const draw = function() {
+        const skyCanvas = document.createElement('canvas');
+        skyCanvas.width  = 1920;
+        skyCanvas.height = 100;
+        const skyContext = skyCanvas.getContext('2d');
+
+        skyContext.drawImage(images['sky'], 0, 0);
+
+        const heightmapCanvas = document.createElement('canvas');
+        heightmapCanvas.width  = 1024;
+        heightmapCanvas.height = 1024;
+        const heightmapContext = heightmapCanvas.getContext('2d');
+
+        heightmapContext.drawImage(images['heightmap'], 0, 0, 1024, 1024);
+
+        compositor.setHeightmap(heightmapCanvas);
+
+        const texturemapCanvas = document.createElement('canvas');
+        texturemapCanvas.width  = 1024;
+        texturemapCanvas.height = 1024;
+        texturemapContext = texturemapCanvas.getContext('2d');
+
+        texturemapContext.drawImage(images['texturemap'], 0, 0, 1024, 1024);
+
+        renderer.setTexturemap(texturemapCanvas)
+          .setOutOfBoundsTexturemap(heightmapCanvas)
+          .setQuality('high')
+          .setSky(skyCanvas)
+          .setHeightmap(compositor.getHeightmap())
+          .setOutOfBoundsHeightmap(
+            compositor.getOutOfBoundsHeightmap())
+              .enable('fog')
+              .setFogColor('#9f8f7f')
+              .enable('smooth')
+              .enable('reflection-map')
+              .setWaterHeight(82)
+        ;
+
+        renderer.addSprite(images['sprite'], 1024 + 512 - 128,
+         renderer.getHeight(1024 + 512 - 128, 1024 + 512 + 32),
+         1024 + 512 + 32);
+        /*renderer.addSprite(images['sprite'], 1024 + 512 - 32,
+         renderer.getHeight(1024 + 512 - 32, 1024 + 512 + 128 + 32),
+         1024 + 512 + 128 + 32);*/
+        renderer.addSprite(images['sprite'], 1024 + 512 + 32,
+         renderer.getHeight(1024 + 512 + 32, 1024 + 512 + 256),
+         1024 + 512 + 256);
+
+        renderer.setCamera({
+          angle: 255,
+          x:     1024 + 768 - 128 - 96,
+          y:     renderer.getHeight(1024 + 768 - 128 - 96, 1024 + 768 + 128),
+          z:     1024 + 768 + 128
+        });
+
+        renderer.render();
+
+        context.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
+      };
+    }
+  };
+})();
+</script>
+  </body>
+</html>
